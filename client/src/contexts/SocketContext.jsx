@@ -13,12 +13,9 @@ export const SocketProvider = ({ children }) => {
   const [recentLiveInvoices, setRecentLiveInvoices] = useState([]);
 
   useEffect(() => {
-    // Connect to backend Socket.io gateway if configured or on localhost
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : null);
-    if (!socketUrl && window.location.hostname !== 'localhost') {
-      return;
-    }
-    const socketClient = io(socketUrl || 'http://localhost:5000', {
+    // Connect to backend Socket.io gateway on Render or localhost
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://smartledger-ai-erp.onrender.com');
+    const socketClient = io(socketUrl, {
       transports: ['websocket', 'polling'],
       autoConnect: true
     });
