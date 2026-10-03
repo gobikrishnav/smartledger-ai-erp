@@ -5,6 +5,8 @@
  *   node test_atlas_connection.js "mongodb+srv://user:pass@cluster0.abcde.mongodb.net/test?retryWrites=true&w=majority"
  */
 
+const dns = require('dns');
+try { dns.setServers(['8.8.8.8', '1.1.1.1']); } catch (e) {}
 const mongoose = require('mongoose');
 
 async function testConnection() {

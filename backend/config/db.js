@@ -1,4 +1,10 @@
+const dns = require('dns');
 const mongoose = require('mongoose');
+
+// Configure reliable DNS servers for MongoDB Atlas SRV resolution
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {}
 
 const connectDB = async () => {
   const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/smartledger_erp_db';

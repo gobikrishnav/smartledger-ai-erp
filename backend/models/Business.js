@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const businessSchema = new mongoose.Schema({
   business_name: { type: String, required: true, default: 'SmartLedger Industrial Solutions Pvt Ltd' },
   legal_name: { type: String, default: 'SmartLedger Industrial Solutions Private Limited' },
-  gstin: { type: String, required: true, default: '29AAACS1420M1Z8' },
-  pan_number: { type: String, default: 'AAACS1420M' },
+  gstin: { type: String, required: false, default: '' },
+  pan_number: { type: String, default: '' },
   state_code: { type: String, required: true, default: '29' },
   state_name: { type: String, default: 'Karnataka' },
   email: { type: String, default: 'finance@smartledger.ai' },
