@@ -13,9 +13,14 @@ export const SocketProvider = ({ children }) => {
   const [recentLiveInvoices, setRecentLiveInvoices] = useState([]);
 
   useEffect(() => {
-    // Connect to backend Socket.io gateway on port 5000
-    const socketClient = io('http://localhost:5000', {
-      transports: ['websocket', 'polling']
+    // Connect to backend Socket.io gateway if configured or on localhost
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : null);
+    if (!socketUrl && window.location.hostname !== 'localhost') {
+      return;
+    }
+    const socketClient = io(socketUrl || 'http://localhost:5000', {
+      transports: ['websocket', 'polling'],
+      autoConnect: true
     });
 
     socketClient.on('connect', () => {

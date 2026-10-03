@@ -26,6 +26,10 @@ function sanitizeMongoUri(rawUri) {
 }
 
 const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return mongoose.connection;
+  }
+
   const rawUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/smartledger_erp_db';
   const uri = sanitizeMongoUri(rawUri);
   const isAtlas = uri.startsWith('mongodb+srv://') || uri.includes('mongodb.net');
