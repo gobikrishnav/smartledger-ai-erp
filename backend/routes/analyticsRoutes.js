@@ -15,6 +15,10 @@ router.use(verifyToken);
 router.get('/cashflow', async (req, res) => {
   try {
     const invoices = await Invoice.find({ payment_status: { $ne: 'VOID' } }).sort({ invoice_timestamp: 1 });
+    if (invoices.length === 0) {
+      return res.json([]);
+    }
+
     const monthlySum = {};
     invoices.forEach(inv => {
       const monthKey = new Date(inv.invoice_timestamp).toISOString().slice(0, 7);
@@ -22,9 +26,9 @@ router.get('/cashflow', async (req, res) => {
     });
 
     const values = Object.values(monthlySum);
-    const baseRevenue = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 160000;
+    const baseRevenue = values.reduce((a, b) => a + b, 0) / values.length;
 
-    // Generate 12-24 months forward projection
+    // Generate 12-24 months forward projection based on real base revenue
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const currentMonth = new Date().getMonth();
 
@@ -41,7 +45,7 @@ router.get('/cashflow', async (req, res) => {
         month: `${months[mIdx]} ${year}`,
         monthPeriod: `${year}-${String(mIdx + 1).padStart(2, '0')}`,
         predictedRevenue: predicted,
-        lowerBound: predicted - variance,
+        lowerBound: Math.max(0, predicted - variance),
         upperBound: predicted + variance,
         confidenceScore: 0.94,
         modelRmseScore: 1.18
@@ -57,53 +61,68 @@ router.get('/cashflow', async (req, res) => {
 // GET /api/analytics/market-basket
 router.get('/market-basket', async (req, res) => {
   try {
-    // Top association rules computed by Apriori engine
-    const rules = [
-      {
-        antecedentName: 'Dell XPS 15 Developer Edition',
-        consequentName: 'Dell UltraSharp 27" 4K USB-C Hub Monitor',
-        support: 0.32,
-        confidence: 0.81,
-        lift: 3.45
-      },
-      {
-        antecedentName: 'Logitech MX Master 3S Wireless Mouse',
-        consequentName: 'Logitech MX Mechanical Wireless Keyboard',
-        support: 0.44,
-        confidence: 0.88,
-        lift: 4.12
-      },
-      {
-        antecedentName: 'APC Smart-UPS 1500VA LCD 230V',
-        consequentName: 'Belkin 8-Outlet Surge Protection Strip',
-        support: 0.26,
-        confidence: 0.72,
-        lift: 2.88
-      },
-      {
-        antecedentName: 'HP LaserJet Pro M404dn Monochrome Printer',
-        consequentName: 'HP 76A Black Original LaserJet Toner Cartridge',
-        support: 0.38,
-        confidence: 0.79,
-        lift: 3.15
-      },
-      {
-        antecedentName: 'Samsung 990 PRO 2TB PCIe 4.0 NVMe SSD',
-        consequentName: 'Kingston FURY Beast 32GB DDR5 5600MHz RAM',
-        support: 0.22,
-        confidence: 0.68,
-        lift: 2.76
-      },
-      {
-        antecedentName: 'Cisco CBS350-24T-4G 24-Port Managed Switch',
-        consequentName: 'Cat6 UTP Ethernet Patch Cable 3M (Pack of 10)',
-        support: 0.19,
-        confidence: 0.65,
-        lift: 2.42
-      }
-    ];
+    const InvoiceItem = require('../models/InvoiceItem');
+    const items = await InvoiceItem.find();
+    
+    // Group items by invoice_id to find co-purchased items
+    const invoiceGroups = {};
+    items.forEach(it => {
+      const invId = it.invoice_id ? it.invoice_id.toString() : 'temp';
+      if (!invoiceGroups[invId]) invoiceGroups[invId] = [];
+      invoiceGroups[invId].push(it.product_name);
+    });
 
-    res.json(rules);
+    const multiItemBaskets = Object.values(invoiceGroups).filter(b => b.length >= 2);
+    if (multiItemBaskets.length < 2) {
+      return res.json([]);
+    }
+
+    // Dynamic Apriori pairs count
+    const pairCounts = {};
+    const singleCounts = {};
+    multiItemBaskets.forEach(basket => {
+      const uniqueItems = [...new Set(basket)];
+      uniqueItems.forEach(item => {
+        singleCounts[item] = (singleCounts[item] || 0) + 1;
+      });
+      for (let i = 0; i < uniqueItems.length; i++) {
+        for (let j = i + 1; j < uniqueItems.length; j++) {
+          const pairKey = `${uniqueItems[i]}|||${uniqueItems[j]}`;
+          pairCounts[pairKey] = (pairCounts[pairKey] || 0) + 1;
+        }
+      }
+    });
+
+    const totalBaskets = multiItemBaskets.length;
+    const rules = [];
+    Object.entries(pairCounts).forEach(([pair, count]) => {
+      const [itemA, itemB] = pair.split('|||');
+      const support = count / totalBaskets;
+      const confAtoB = count / (singleCounts[itemA] || 1);
+      const confBtoA = count / (singleCounts[itemB] || 1);
+      const lift = support / (((singleCounts[itemA] || 1) / totalBaskets) * ((singleCounts[itemB] || 1) / totalBaskets));
+
+      if (confAtoB >= 0.3) {
+        rules.push({
+          antecedentName: itemA,
+          consequentName: itemB,
+          support: Number(support.toFixed(3)),
+          confidence: Number(confAtoB.toFixed(3)),
+          lift: Number(lift.toFixed(2))
+        });
+      }
+      if (confBtoA >= 0.3) {
+        rules.push({
+          antecedentName: itemB,
+          consequentName: itemA,
+          support: Number(support.toFixed(3)),
+          confidence: Number(confBtoA.toFixed(3)),
+          lift: Number(lift.toFixed(2))
+        });
+      }
+    });
+
+    res.json(rules.slice(0, 10));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -22,40 +22,40 @@ const Dashboard = () => {
   const [recentInvoices, setRecentInvoices] = useState([]);
   const [catalogProducts, setCatalogProducts] = useState([]);
 
-  // Retail monthly revenue data (₹ in lakhs)
-  const monthlyRevenue = [
-    { month: 'Apr', revenue: 18.4, units: 1240 },
-    { month: 'May', revenue: 22.1, units: 1580 },
-    { month: 'Jun', revenue: 19.8, units: 1390 },
-    { month: 'Jul', revenue: 25.6, units: 1820 },
-    { month: 'Aug', revenue: 28.3, units: 2040 },
-    { month: 'Sep', revenue: 31.2, units: 2280 },
-    { month: 'Oct', revenue: 27.4, units: 1950 },
-    { month: 'Nov', revenue: 35.8, units: 2560 },
-    { month: 'Dec', revenue: 42.1, units: 3010 },
-    { month: 'Jan', revenue: 29.6, units: 2110 },
-    { month: 'Feb', revenue: 26.9, units: 1920 },
-    { month: 'Mar', revenue: 38.5, units: 2740 },
-  ];
+  // Dynamic monthly revenue calculated from live invoices
+  const [monthlyRevenue, setMonthlyRevenue] = useState(() => {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const curMonth = new Date().getMonth();
+    const list = [];
+    for (let i = 11; i >= 0; i--) {
+      const idx = (curMonth - i + 12) % 12;
+      list.push({ month: monthNames[idx], revenue: 0, units: 0 });
+    }
+    return list;
+  });
 
-  // Top selling products (dynamically populated from user's live catalog)
-  const defaultTopProducts = [
-    { name: 'Basmati Rice 5kg', sku: 'RICE-5KG-001', sold: 847, revenue: 4.23, trend: '+12%' },
-    { name: 'Tata Salt 1kg', sku: 'SALT-1KG-002', sold: 634, revenue: 0.95, trend: '+8%' },
-    { name: 'Amul Butter 500g', sku: 'BUTR-500G-003', sold: 521, revenue: 2.60, trend: '+5%' },
-    { name: 'Aashirvaad Atta 10kg', sku: 'ATTA-10KG-004', sold: 418, revenue: 3.77, trend: '+18%' },
-    { name: 'Surf Excel 3kg', sku: 'DETG-3KG-005', sold: 392, revenue: 3.92, trend: '-3%' },
-  ];
+  const topProducts = catalogProducts.slice(0, 5).map((p, idx) => {
+    let soldCount = 0;
+    let revTotal = 0;
+    recentInvoices.forEach(inv => {
+      if (Array.isArray(inv.items)) {
+        inv.items.forEach(it => {
+          if (String(it.productId || it.product_id) === String(p._id || p.id) || it.name === p.name || it.productName === p.product_name) {
+            soldCount += (it.quantity || 1);
+            revTotal += ((it.unitPrice || it.unit_price || p.unit_price || 0) * (it.quantity || 1)) / 100000;
+          }
+        });
+      }
+    });
 
-  const topProducts = catalogProducts.length > 0
-    ? catalogProducts.slice(0, 5).map((p, idx) => ({
-        name: p.product_name || p.name,
-        sku: p.sku || `SKU-00${idx + 1}`,
-        sold: Math.max(12, 100 - idx * 18),
-        revenue: Number(((p.unit_price * (100 - idx * 18)) / 100000).toFixed(2)),
-        trend: idx % 2 === 0 ? '+15%' : '+8%'
-      }))
-    : defaultTopProducts;
+    return {
+      name: p.product_name || p.name,
+      sku: p.sku || `SKU-00${idx + 1}`,
+      sold: soldCount,
+      revenue: Number(revTotal.toFixed(2)),
+      trend: soldCount > 0 ? '+100%' : 'Active'
+    };
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,12 +63,37 @@ const Dashboard = () => {
       try {
         const [statsRes, invRes, prodRes] = await Promise.all([
           client.get('/admin/stats').catch(() => ({ data: {} })),
-          client.get('/invoices?limit=6').catch(() => ({ data: [] })),
+          client.get('/invoices?limit=100').catch(() => ({ data: [] })),
           client.get('/products').catch(() => ({ data: [] }))
         ]);
+        const invoicesList = Array.isArray(invRes.data) ? invRes.data : (invRes.data?.invoices || []);
+        const productsList = Array.isArray(prodRes.data) ? prodRes.data : (prodRes.data?.data || []);
         setStats(statsRes.data || {});
-        setRecentInvoices(Array.isArray(invRes.data) ? invRes.data : []);
-        setCatalogProducts(Array.isArray(prodRes.data) ? prodRes.data : (prodRes.data?.data || []));
+        setRecentInvoices(invoicesList);
+        setCatalogProducts(productsList);
+
+        // Compute monthly revenue dynamically from invoices
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const curMonth = new Date().getMonth();
+        const mRevMap = {};
+        for (let i = 11; i >= 0; i--) {
+          const idx = (curMonth - i + 12) % 12;
+          mRevMap[monthNames[idx]] = { month: monthNames[idx], revenue: 0, units: 0 };
+        }
+
+        invoicesList.forEach(inv => {
+          if (inv.status !== 'cancelled' && inv.payment_status !== 'VOID') {
+            const date = new Date(inv.invoice_timestamp || inv.createdAt || inv.created_at || Date.now());
+            const mName = monthNames[date.getMonth()];
+            if (mRevMap[mName]) {
+              const rev = (inv.grandTotal || inv.net_total || 0) / 100000;
+              mRevMap[mName].revenue = Number((mRevMap[mName].revenue + rev).toFixed(2));
+              const itemsCount = Array.isArray(inv.items) ? inv.items.reduce((acc, it) => acc + (it.quantity || 1), 0) : 1;
+              mRevMap[mName].units += itemsCount;
+            }
+          }
+        });
+        setMonthlyRevenue(Object.values(mRevMap));
       } catch (err) {
         console.error(err);
       } finally {
@@ -204,10 +229,10 @@ const Dashboard = () => {
             </div>
             <div>
               <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a' }}>
-                {fmt(stats?.todayRevenue || 84250)}
+                {fmt(stats?.todayRevenue !== undefined && stats?.todayRevenue !== null ? stats.todayRevenue : 0)}
               </div>
               <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                <FiTrendingUp size={11} /> +14.2% vs yesterday
+                <FiTrendingUp size={11} /> Real-time active
               </div>
             </div>
           </div>
@@ -229,10 +254,10 @@ const Dashboard = () => {
             </div>
             <div>
               <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a' }}>
-                {(stats?.totalProducts || 2847).toLocaleString()}
+                {(stats?.totalProducts !== undefined ? stats.totalProducts : catalogProducts.length).toLocaleString()}
               </div>
               <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-                7 items low stock
+                {catalogProducts.filter(p => (p.stock_quantity || p.stockQty || 0) <= (p.reorder_level || p.reorderPoint || 10)).length} low stock alerts
               </div>
             </div>
           </div>
@@ -254,10 +279,10 @@ const Dashboard = () => {
             </div>
             <div>
               <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a' }}>
-                {stats?.totalInvoices || 1284}
+                {stats?.totalInvoices !== undefined ? stats.totalInvoices : recentInvoices.length}
               </div>
               <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-                {stats?.pendingInvoices || 23} pending payment
+                {recentInvoices.filter(i => i.status === 'draft' || i.payment_status === 'PENDING').length} pending payment
               </div>
             </div>
           </div>
@@ -279,10 +304,10 @@ const Dashboard = () => {
             </div>
             <div>
               <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f172a' }}>
-                {stats?.profitMargin || '28.4'}%
+                {stats?.profitMargin || '0.0'}%
               </div>
               <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                <FiTrendingUp size={11} /> +2.1pp this month
+                <FiTrendingUp size={11} /> Operating margin
               </div>
             </div>
           </div>
@@ -315,47 +340,55 @@ const Dashboard = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {topProducts.map((p, i) => (
-              <div
-                key={i}
-                className="product-row"
-                style={{
-                  padding: '0.85rem 1rem',
-                  borderRadius: 14,
-                  border: '1px solid #f1f5f9',
-                  background: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  transition: 'background 0.15s'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                  <div style={{
-                    width: 34, height: 34, borderRadius: '50%',
-                    background: '#eff6ff', color: '#2563eb',
-                    border: '1px solid #dbeafe',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 800, fontSize: '0.78rem'
-                  }}>
-                    #{i + 1}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>{p.name}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace' }}>{p.sku}</div>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0f172a' }}>{p.sold} units</div>
-                  <div style={{
-                    fontSize: '0.72rem', fontWeight: 600,
-                    color: p.trend.startsWith('+') ? '#10b981' : '#ef4444'
-                  }}>
-                    {p.trend} · {fmtL(p.revenue)}
-                  </div>
-                </div>
+            {topProducts.length === 0 ? (
+              <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#64748b' }}>
+                <FiPackage size={32} style={{ color: '#94a3b8', marginBottom: '0.6rem' }} />
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a' }}>No products in catalog yet</div>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>Add products in the Inventory tab to start tracking item sales.</div>
               </div>
-            ))}
+            ) : (
+              topProducts.map((p, i) => (
+                <div
+                  key={i}
+                  className="product-row"
+                  style={{
+                    padding: '0.85rem 1rem',
+                    borderRadius: 14,
+                    border: '1px solid #f1f5f9',
+                    background: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'background 0.15s'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      background: '#eff6ff', color: '#2563eb',
+                      border: '1px solid #dbeafe',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 800, fontSize: '0.78rem'
+                    }}>
+                      #{i + 1}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>{p.name}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontFamily: 'monospace' }}>{p.sku}</div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#0f172a' }}>{p.sold} units</div>
+                    <div style={{
+                      fontSize: '0.72rem', fontWeight: 600,
+                      color: p.sold > 0 ? '#10b981' : '#64748b'
+                    }}>
+                      {p.sold > 0 ? p.trend : 'In Stock'} · {fmtL(p.revenue)}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
@@ -416,9 +449,9 @@ const Dashboard = () => {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9', fontSize: '0.82rem', color: '#64748b' }}>
-            <div>Peak: <strong style={{ color: '#2563eb' }}>{peakMonth.month} (₹{peakMonth.revenue}L)</strong></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#10b981', fontWeight: 700 }}>
-              <FiTrendingUp size={16} /> +22.6% YoY Growth
+            <div>Peak: <strong style={{ color: '#2563eb' }}>{peakMonth?.revenue > 0 ? `${peakMonth.month} (${currencySymbol}${peakMonth.revenue}L)` : 'No sales recorded yet'}</strong></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#2563eb', fontWeight: 700 }}>
+              <FiActivity size={16} /> Live Data Feed
             </div>
           </div>
         </div>

@@ -20,16 +20,8 @@ import {
   buttonPress, init3DCardHover, pulseNeonBorder, badgePulse, modalIn
 } from '../utils/animations';
 
-const INITIAL_USERS = [
-  { _id: 'usr-001', name: 'Dr. Vikramaditya Rao', email: 'admin@smartledger.ai', role: 'Admin', status: 'ACTIVE', lastLogin: '2026-08-02 22:45', ip: '192.168.1.104', mfa: true },
-  { _id: 'usr-002', name: 'Aarav Singhania', email: 'owner@smartledger.ai', role: 'Business Owner', status: 'ACTIVE', lastLogin: '2026-08-02 22:42', ip: '192.168.1.115', mfa: true },
-  { _id: 'usr-003', name: 'Kunal Deshmukh', email: 'wm@smartledger.ai', role: 'Warehouse Manager', status: 'ACTIVE', lastLogin: '2026-08-02 22:38', ip: '192.168.1.202', mfa: false },
-  { _id: 'usr-004', name: 'Meenakshi Sundaram', email: 'auditor@smartledger.ai', role: 'Corporate Auditor', status: 'ACTIVE', lastLogin: '2026-08-02 20:10', ip: '192.168.1.150', mfa: true },
-  { _id: 'usr-005', name: 'Rohan Mehta', email: 'data.science@smartledger.ai', role: 'AI Data Scientist', status: 'ACTIVE', lastLogin: '2026-08-02 19:30', ip: '192.168.1.188', mfa: true }
-];
-
 const Admin = () => {
-  const [users, setUsers]                 = useState(INITIAL_USERS);
+  const [users, setUsers]                 = useState([]);
   const [loading, setLoading]             = useState(true);
   const [activeTab, setActiveTab]         = useState('users'); // users, models, system
   const [search, setSearch]               = useState('');
@@ -60,17 +52,19 @@ const Admin = () => {
     setLoading(true);
     try {
       const res = await client.get('/admin/users');
-      if (Array.isArray(res.data) && res.data.length > 0) {
+      if (Array.isArray(res.data)) {
         setUsers(res.data.map(u => ({
           ...u,
-          status: 'ACTIVE',
-          lastLogin: 'Today 22:45',
-          ip: '192.168.1.100',
-          mfa: true
+          status: u.status || 'ACTIVE',
+          lastLogin: u.lastLogin || 'Recent',
+          ip: u.ip || '127.0.0.1',
+          mfa: u.mfa ?? false
         })));
+      } else {
+        setUsers([]);
       }
     } catch {
-      // Keep initial authentic users
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -355,7 +349,16 @@ const Admin = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map(u => (
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <FiUsers size={36} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
+                        <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>No Personnel Accounts</div>
+                        <div style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>Click "+ Create RBAC Account" above to authorize team members.</div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map(u => (
                     <tr key={u._id} className="adm-row adm-row-hover" style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '1rem 1.25rem', fontWeight: 800 }}>{u.name}</td>
                       <td style={{ padding: '1rem 1.25rem', color: 'var(--text-secondary)' }}>{u.email}</td>
@@ -385,7 +388,7 @@ const Admin = () => {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>

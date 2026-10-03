@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FiZap, FiBarChart2, FiClock, FiStar, FiTrendingUp,
@@ -49,26 +49,6 @@ const DEMO_ACCOUNTS = [
   }
 ];
 
-// Demo revenue data for preview chart
-const previewRevenue = [
-  { month: 'Apr', revenue: 18 },
-  { month: 'May', revenue: 22 },
-  { month: 'Jun', revenue: 20 },
-  { month: 'Jul', revenue: 26 },
-  { month: 'Aug', revenue: 28 },
-  { month: 'Sep', revenue: 31 },
-  { month: 'Oct', revenue: 27 },
-  { month: 'Nov', revenue: 36 },
-  { month: 'Dec', revenue: 42 },
-];
-
-// Demo top products for preview
-const previewProducts = [
-  { name: 'Basmati Rice 5kg', units: 847, trend: '+12%' },
-  { name: 'Tata Salt 1kg', units: 634, trend: '+8%' },
-  { name: 'Amul Butter 500g', units: 521, trend: '+5%' },
-];
-
 const FEATURES = [
   {
     icon: FiShoppingCart, color: '#2563eb', bg: '#eff6ff',
@@ -110,6 +90,12 @@ const LandingPage = () => {
   const [authPassword, setAuthPassword] = useState('admin123');
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleQuickLogin = async (account) => {
     setAuthLoading(true);
@@ -417,15 +403,15 @@ const LandingPage = () => {
 
             {/* Low Stock Alert Banner */}
             <div style={{
-              background: '#ffffff', border: '1px solid #fde68a', borderRadius: 16,
+              background: '#ffffff', border: '1px solid #bbf7d0', borderRadius: 16,
               padding: '0.85rem 1.25rem', display: 'flex', alignItems: 'center',
               justifyContent: 'space-between', marginBottom: '1.25rem'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>⚠️</div>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a' }}>✓</div>
                 <div>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a' }}>Low Stock Alert</div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>7 products below reorder threshold — <span style={{ color: '#ef4444', fontWeight: 700 }}>Basmati Rice, Aashirvaad Atta</span> and 5 more.</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a' }}>System Ready & Initialized</div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Clean ledger slate — 0 stock alerts. Add your products in Warehouse Console to begin.</div>
                 </div>
               </div>
               <button
@@ -433,17 +419,17 @@ const LandingPage = () => {
                 onClick={() => navigate('/inventory')}
                 style={{ background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 9999, padding: '0.35rem 1rem', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
               >
-                Reorder Now
+                Add Products
               </button>
             </div>
 
             {/* 4 KPI Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.25rem' }}>
               {[
-                { label: "Today's Revenue", value: '₹84,250', icon: FiDollarSign, color: '#10b981', bg: '#ecfdf5', sub: '+14% vs yesterday' },
-                { label: 'Products in Stock', value: '2,847', icon: FiBox, color: '#2563eb', bg: '#eff6ff', sub: '7 low stock alerts' },
-                { label: 'Invoices (Month)', value: '1,284', icon: FiFileText, color: '#7c3aed', bg: '#f5f3ff', sub: '23 pending payment' },
-                { label: 'Gross Margin', value: '28.4%', icon: FiPercent, color: '#ea580c', bg: '#fff7ed', sub: '+2.1pp this month' },
+                { label: "Today's Revenue", value: '₹0', icon: FiDollarSign, color: '#10b981', bg: '#ecfdf5', sub: 'Ready for billing' },
+                { label: 'Products in Stock', value: '0', icon: FiBox, color: '#2563eb', bg: '#eff6ff', sub: '0 stock alerts' },
+                { label: 'Invoices (Month)', value: '0', icon: FiFileText, color: '#7c3aed', bg: '#f5f3ff', sub: '0 pending payment' },
+                { label: 'Gross Margin', value: '0.0%', icon: FiPercent, color: '#ea580c', bg: '#fff7ed', sub: 'Dynamic margin tracker' },
               ].map((kpi, i) => (
                 <div key={i} style={{ background: '#ffffff', border: '1px solid #eef2f6', borderRadius: 14, padding: '0.95rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.68rem', fontWeight: 600, marginBottom: '0.5rem' }}>
@@ -455,7 +441,7 @@ const LandingPage = () => {
                     </div>
                     <div>
                       <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>{kpi.value}</div>
-                      <div style={{ fontSize: '0.62rem', color: kpi.sub.includes('↑') || kpi.sub.includes('+') ? '#10b981' : '#64748b', fontWeight: 600 }}>{kpi.sub}</div>
+                      <div style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 600 }}>{kpi.sub}</div>
                     </div>
                   </div>
                 </div>
@@ -467,40 +453,22 @@ const LandingPage = () => {
               {/* Top Products */}
               <div style={{ background: '#ffffff', border: '1px solid #eef2f6', borderRadius: 16, padding: '1.15rem' }}>
                 <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a', marginBottom: '0.3rem' }}>Top Selling Products</div>
-                <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.9rem' }}>Best performers this month by units sold.</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                  {previewProducts.map((p, i) => (
-                    <div key={i} style={{ padding: '0.6rem 0.75rem', borderRadius: 12, border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800 }}>#{i + 1}</div>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#0f172a' }}>{p.name}</span>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a' }}>{p.units}</div>
-                        <div style={{ fontSize: '0.62rem', color: '#10b981', fontWeight: 600 }}>{p.trend}</div>
-                      </div>
-                    </div>
-                  ))}
+                <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.9rem' }}>Fastest moving SKUs computed live.</div>
+                <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>
+                  <FiBox size={26} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+                  <div>No transactions recorded yet.</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.25rem' }}>Product sales rank here dynamically.</div>
                 </div>
               </div>
 
               {/* Revenue Chart */}
               <div style={{ background: '#ffffff', border: '1px solid #eef2f6', borderRadius: 16, padding: '1.15rem' }}>
-                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a', marginBottom: '0.25rem' }}>Monthly Revenue</div>
-                <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.9rem' }}>Sales trend — last 9 months (₹ Lakhs).</div>
-                <div style={{ height: 155, width: '100%' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={previewRevenue} margin={{ top: 5, right: 5, left: -28, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="month" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
-                      <Bar dataKey="revenue" radius={[5, 5, 0, 0]}>
-                        {previewRevenue.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.month === 'Dec' ? '#2563eb' : '#dbeafe'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a', marginBottom: '0.25rem' }}>Monthly Revenue Overview</div>
+                <div style={{ fontSize: '0.68rem', color: '#94a3b8', marginBottom: '0.9rem' }}>Live invoice aggregation (₹ Lakhs).</div>
+                <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>
+                  <FiBarChart2 size={26} style={{ marginBottom: '0.5rem', opacity: 0.5 }} />
+                  <div>Awaiting first invoice creation.</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '0.25rem' }}>Sales chart activates with live data.</div>
                 </div>
               </div>
             </div>

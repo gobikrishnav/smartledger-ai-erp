@@ -30,7 +30,7 @@ const Inventory = () => {
   // Add Product Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [newProd, setNewProd] = useState({
-    sku: '', productName: '', unitPrice: '', costPrice: '', hsnSacCode: '8501', category: 'Electronics', stockQty: '50', reorderPoint: '10'
+    sku: '', productName: '', unitPrice: '', costPrice: '', hsnSacCode: '8501', category: 'General', stockQty: '0', reorderPoint: '10'
   });
 
   const pageRef = useRef(null);
@@ -245,7 +245,16 @@ const Inventory = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.map(p => {
+              {filteredProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={9} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <FiBox size={36} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
+                    <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>No Products in Catalog</div>
+                    <div style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>Click "+ Add Product" to create your first inventory item.</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredProducts.map(p => {
                 const cost = p.costPrice || p.unitPrice * 0.65;
                 const unitProfit = p.unitPrice - cost;
                 const marginPercent = p.unitPrice > 0 ? ((unitProfit / p.unitPrice) * 100) : 0;
@@ -282,7 +291,7 @@ const Inventory = () => {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

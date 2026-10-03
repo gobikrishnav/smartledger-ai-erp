@@ -24,11 +24,11 @@ const WarehouseConsole = () => {
   const [grnForm, setGrnForm] = useState({
     product_id: '',
     batch_number: '',
-    inward_quantity: 50,
-    unit_cost: 100,
+    inward_quantity: 1,
+    unit_cost: 0,
     mfg_date: new Date().toISOString().slice(0, 10),
     expiry_date: new Date(Date.now() + 180 * 86400000).toISOString().slice(0, 10),
-    supplier_name: 'Apex Wholesale Distributors'
+    supplier_name: ''
   });
 
   const [notificationMsg, setNotificationMsg] = useState(null);

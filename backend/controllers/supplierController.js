@@ -25,8 +25,8 @@ exports.getSuppliers = async (req, res) => {
       obj.riskScore = Math.round((5 - s.reliability_score) * 15);
       obj.rating = s.reliability_score;
       obj.terms = s.payment_terms;
-      obj.activePOs = s.active_pos_count || 2;
-      obj.totalSpend = s.total_spend || 850000;
+      obj.activePOs = s.active_pos_count || 0;
+      obj.totalSpend = s.total_spend || 0;
       return obj;
     });
 

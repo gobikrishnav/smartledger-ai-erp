@@ -271,7 +271,16 @@ const Invoices = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredInvoices.map((inv, idx) => {
+                {filteredInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} style={{ padding: '3.5rem', textAlign: 'center', color: '#94a3b8' }}>
+                      <FiFileText size={40} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
+                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>No Invoices Generated Yet</div>
+                      <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.35rem' }}>Your invoice register is clean. Click "+ Create Matrix Invoice" above to generate your first bill.</div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInvoices.map((inv, idx) => {
                   const invNo = inv.invoiceNumber || inv.invoice_no || `INV-${idx + 1}`;
                   const clientName = inv.client?.businessName || inv.clientId?.businessName || inv.customer_name || 'Retail Client';
                   const grandTotal = inv.grandTotal || inv.net_total || 0;
@@ -333,14 +342,7 @@ const Invoices = () => {
                       </td>
                     </tr>
                   );
-                })}
-                {filteredInvoices.length === 0 && (
-                  <tr>
-                    <td colSpan="9" style={{ padding: '3rem', textAlign: 'center', color: '#94a3b8' }}>
-                      No matching invoices found in this filter view.
-                    </td>
-                  </tr>
-                )}
+                }))}
               </tbody>
             </table>
           </div>

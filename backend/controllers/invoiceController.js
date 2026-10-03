@@ -435,15 +435,15 @@ exports.getProfitSummary = async (req, res) => {
       return acc + (cost * (item.quantity || 1));
     }, 0);
 
-    const totalShipping = 1500;
-    const totalNetProfit = Math.max(0, totalRevenue - totalCOGS - totalDiscounts);
-    const netMarginPercent = totalRevenue > 0 ? (totalNetProfit / totalRevenue) * 100 : 38.5;
-    const grossMarginPercent = totalRevenue > 0 ? ((totalRevenue - totalCOGS) / totalRevenue) * 100 : 42.0;
+    const totalShipping = invoices.length > 0 ? (invoices.reduce((acc, inv) => acc + (inv.shipping_fee || 0), 0)) : 0;
+    const totalNetProfit = totalRevenue > 0 ? Math.max(0, totalRevenue - totalCOGS - totalDiscounts - totalShipping) : 0;
+    const netMarginPercent = totalRevenue > 0 ? (totalNetProfit / totalRevenue) * 100 : 0;
+    const grossMarginPercent = totalRevenue > 0 ? ((totalRevenue - totalCOGS) / totalRevenue) * 100 : 0;
 
     // Build category profit breakdown
     const categoryProfit = {};
     for (const item of items) {
-      const cat = item.category || 'Industrial Equipment';
+      const cat = item.category || 'General';
       if (!categoryProfit[cat]) {
         categoryProfit[cat] = { itemsCount: 0, revenue: 0, cost: 0, profit: 0 };
       }
@@ -453,12 +453,6 @@ exports.getProfitSummary = async (req, res) => {
       categoryProfit[cat].revenue += itemRev;
       categoryProfit[cat].cost += itemCost;
       categoryProfit[cat].profit += (itemRev - itemCost);
-    }
-    // If no category items found, add representative catalog categories
-    if (Object.keys(categoryProfit).length === 0) {
-      categoryProfit['Renewable Solar & PV'] = { itemsCount: 42, revenue: 215000, cost: 125000, profit: 90000 };
-      categoryProfit['Industrial Switchgear'] = { itemsCount: 65, revenue: 165000, cost: 98000, profit: 67000 };
-      categoryProfit['Safety Equipment & PPE'] = { itemsCount: 88, revenue: 130692, cost: 78380, profit: 52312 };
     }
 
     res.json({

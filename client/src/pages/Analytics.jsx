@@ -68,20 +68,16 @@ const Analytics = () => {
   }, []);
 
   const safePnl = pnlData || {
-    totalRevenue: 510692,
-    totalCOGS: 301380,
-    totalDiscounts: 1482,
-    totalShipping: 1500,
-    totalNetProfit: 207830,
-    netMarginPercent: 40.7,
-    grossMarginPercent: 41.0,
-    totalInvoices: 17,
-    invoiceCount: 17,
-    categoryProfit: {
-      'Renewable Solar & PV': { itemsCount: 42, revenue: 215000, cost: 125000, profit: 90000 },
-      'Industrial Switchgear': { itemsCount: 65, revenue: 165000, cost: 98000, profit: 67000 },
-      'Safety Equipment & PPE': { itemsCount: 88, revenue: 130692, cost: 78380, profit: 52312 }
-    }
+    totalRevenue: 0,
+    totalCOGS: 0,
+    totalDiscounts: 0,
+    totalShipping: 0,
+    totalNetProfit: 0,
+    netMarginPercent: 0,
+    grossMarginPercent: 0,
+    totalInvoices: 0,
+    invoiceCount: 0,
+    categoryProfit: {}
   };
 
   const fmt = (val) => new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(val || 0);
@@ -367,32 +363,41 @@ const Analytics = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(safePnl.categoryProfit || {}).map(([category, data]) => {
-                        const margin = data.revenue > 0 ? ((data.profit / data.revenue) * 100) : 0;
-                        return (
-                          <tr key={category} className="table-row-hover" style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '0.95rem 1.25rem', fontWeight: 700, color: '#2563eb' }}>{category}</td>
-                            <td style={{ padding: '0.95rem 1.25rem', color: '#475569' }}>{data.itemsCount} units</td>
-                            <td style={{ padding: '0.95rem 1.25rem', fontWeight: 600, color: '#0f172a' }}>{fmt(data.revenue)}</td>
-                            <td style={{ padding: '0.95rem 1.25rem', color: '#64748b' }}>{fmt(data.cost)}</td>
-                            <td style={{ padding: '0.95rem 1.25rem', fontWeight: 800, color: data.profit >= 0 ? '#10b981' : '#ef4444' }}>
-                              {fmt(data.profit)}
-                            </td>
-                            <td style={{ padding: '0.95rem 1.25rem' }}>
-                              <span style={{
-                                background: margin >= 25 ? '#ecfdf5' : '#eff6ff',
-                                color: margin >= 25 ? '#059669' : '#2563eb',
-                                padding: '0.25rem 0.65rem',
-                                borderRadius: 9999,
-                                fontWeight: 700,
-                                fontSize: '0.78rem'
-                              }}>
-                                {margin.toFixed(1)}%
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                      {Object.keys(safePnl.categoryProfit || {}).length === 0 ? (
+                        <tr>
+                          <td colSpan="6" style={{ padding: '2.5rem 1.25rem', textAlign: 'center', color: '#64748b' }}>
+                            <div style={{ fontWeight: 600, color: '#0f172a', marginBottom: '0.25rem' }}>No category sales recorded yet</div>
+                            <div style={{ fontSize: '0.8rem' }}>Once products are sold via invoices, their margins and gross revenue will be automatically computed here.</div>
+                          </td>
+                        </tr>
+                      ) : (
+                        Object.entries(safePnl.categoryProfit || {}).map(([category, data]) => {
+                          const margin = data.revenue > 0 ? ((data.profit / data.revenue) * 100) : 0;
+                          return (
+                            <tr key={category} className="table-row-hover" style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '0.95rem 1.25rem', fontWeight: 700, color: '#2563eb' }}>{category}</td>
+                              <td style={{ padding: '0.95rem 1.25rem', color: '#475569' }}>{data.itemsCount} units</td>
+                              <td style={{ padding: '0.95rem 1.25rem', fontWeight: 600, color: '#0f172a' }}>{fmt(data.revenue)}</td>
+                              <td style={{ padding: '0.95rem 1.25rem', color: '#64748b' }}>{fmt(data.cost)}</td>
+                              <td style={{ padding: '0.95rem 1.25rem', fontWeight: 800, color: data.profit >= 0 ? '#10b981' : '#ef4444' }}>
+                                {fmt(data.profit)}
+                              </td>
+                              <td style={{ padding: '0.95rem 1.25rem' }}>
+                                <span style={{
+                                  background: margin >= 25 ? '#ecfdf5' : '#eff6ff',
+                                  color: margin >= 25 ? '#059669' : '#2563eb',
+                                  padding: '0.25rem 0.65rem',
+                                  borderRadius: 9999,
+                                  fontWeight: 700,
+                                  fontSize: '0.78rem'
+                                }}>
+                                  {margin.toFixed(1)}%
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>

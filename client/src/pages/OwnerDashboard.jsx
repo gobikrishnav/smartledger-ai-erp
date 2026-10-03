@@ -73,20 +73,8 @@ const OwnerDashboard = () => {
           setForecastData(formatted);
         }
       } catch (fErr) {
-        console.warn('LSTM Forecast fallback to baseline:', fErr);
-        // Fallback baseline trend if AI microservice initializing
-        const baseline = Array.from({ length: 30 }, (_, i) => {
-          const d = new Date();
-          d.setDate(d.getDate() + i + 1);
-          const base = 42000 + Math.sin(i / 2) * 8000 + (i * 450);
-          return {
-            date: d.toISOString().slice(5, 10),
-            projected: Math.round(base),
-            lower: Math.round(base * 0.85),
-            upper: Math.round(base * 1.15)
-          };
-        });
-        setForecastData(baseline);
+        console.warn('LSTM Forecast notice:', fErr.message);
+        setForecastData([]);
       }
     } catch (err) {
       console.error('Error loading Owner dashboard data:', err);
@@ -284,8 +272,8 @@ const OwnerDashboard = () => {
             <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#0f172a' }}>
               ₹{totalRevenue.toLocaleString('en-IN')}
             </div>
-            <div style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 600, marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-              <ArrowUpRight size={14} /> +18.4% vs Previous Quarter
+            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, marginTop: '0.35rem' }}>
+              Real-time ledger total
             </div>
           </div>
 
@@ -367,36 +355,44 @@ const OwnerDashboard = () => {
           </div>
 
           <div style={{ height: 320, width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={forecastData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="forecastFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
-                  </linearGradient>
-                  <linearGradient id="bandFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#cbd5e1" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#cbd5e1" stopOpacity={0.05} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 0, 0, 0.05)" vertical={false} />
-                <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                <YAxis
-                  stroke="#94a3b8"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
-                />
-                <Tooltip
-                  formatter={(val) => [`₹${Number(val).toLocaleString('en-IN')}`, '']}
-                  contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.8rem', color: '#0f172a', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                />
-                <Area type="monotone" dataKey="upper" stroke="#94a3b8" fillOpacity={1} fill="url(#bandFill)" name="Upper Confidence Band" />
-                <Area type="monotone" dataKey="lower" stroke="#94a3b8" fill="#ffffff" fillOpacity={1} name="Lower Confidence Band" />
-                <Area type="monotone" dataKey="projected" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#forecastFill)" name="Projected Cash Inflow" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {forecastData.length === 0 ? (
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                <TrendingUp size={36} color="#94a3b8" style={{ marginBottom: '0.6rem' }} />
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>No Cash Flow History Available</div>
+                <div style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>Once you create customer invoices, the Bi-LSTM model will generate 30-day cash flow projections.</div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={forecastData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="forecastFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0} />
+                    </linearGradient>
+                    <linearGradient id="bandFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#cbd5e1" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#cbd5e1" stopOpacity={0.05} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 0, 0, 0.05)" vertical={false} />
+                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickLine={false} />
+                  <YAxis
+                    stroke="#94a3b8"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip
+                    formatter={(val) => [`₹${Number(val).toLocaleString('en-IN')}`, '']}
+                    contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.8rem', color: '#0f172a', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                  />
+                  <Area type="monotone" dataKey="upper" stroke="#94a3b8" fillOpacity={1} fill="url(#bandFill)" name="Upper Confidence Band" />
+                  <Area type="monotone" dataKey="lower" stroke="#94a3b8" fill="#ffffff" fillOpacity={1} name="Lower Confidence Band" />
+                  <Area type="monotone" dataKey="projected" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#forecastFill)" name="Projected Cash Inflow" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 

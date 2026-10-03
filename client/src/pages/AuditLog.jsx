@@ -20,21 +20,8 @@ import {
   buttonPress, init3DCardHover, pulseNeonBorder, badgePulse, modalIn
 } from '../utils/animations';
 
-const INITIAL_AUDIT_LOGS = [
-  { _id: 'aud-9001', timestamp: '2026-08-02T22:45:10+05:30', user: 'admin@smartledger.ai', role: 'Admin', category: 'SECURITY', event: 'AES-256 JWT Token Handshake Re-verified', severity: 'INFO', ip: '192.168.1.104', status: 'SUCCESS' },
-  { _id: 'aud-9002', timestamp: '2026-08-02T22:42:01+05:30', user: 'owner@smartledger.ai', role: 'Business Owner', category: 'INVOICING', event: 'Finalized GST Multi-Row Matrix Invoice INV-2026-0012', severity: 'INFO', ip: '192.168.1.115', status: 'SUCCESS' },
-  { _id: 'aud-9003', timestamp: '2026-08-02T22:38:45+05:30', user: 'wm@smartledger.ai', role: 'Warehouse Manager', category: 'INVENTORY', event: 'Restocked SKU-ELEC-01 (+50 Units) — Manual Audit Restock', severity: 'INFO', ip: '192.168.1.202', status: 'SUCCESS' },
-  { _id: 'aud-9004', timestamp: '2026-08-02T22:30:19+05:30', user: 'SYSTEM_CRON', role: 'System AI', category: 'ANOMALY', event: 'Isolation Forest flagged Client EXIDE INDUSTRIES for high delay variance (>45 days)', severity: 'WARNING', ip: 'localhost', status: 'FLAGGED' },
-  { _id: 'aud-9005', timestamp: '2026-08-02T22:15:00+05:30', user: 'admin@smartledger.ai', role: 'Admin', category: 'COMPLIANCE', event: 'Generated GSTR-1 & GSTR-3B Quarterly Tax Reconciliation Matrix', severity: 'INFO', ip: '192.168.1.104', status: 'SUCCESS' },
-  { _id: 'aud-9006', timestamp: '2026-08-02T21:55:12+05:30', user: 'SYSTEM_CRON', role: 'System AI', category: 'ML_ENGINE', event: 'Retrained Holt-Winters Double Exponential Smoothing Neural Net (RMSE: 1420)', severity: 'INFO', ip: 'localhost', status: 'SUCCESS' },
-  { _id: 'aud-9007', timestamp: '2026-08-02T21:40:08+05:30', user: 'unknown@external.net', role: 'Anonymous', category: 'SECURITY', event: 'Failed authentication attempt — Incorrect HMAC-SHA256 signature', severity: 'CRITICAL', ip: '45.133.192.11', status: 'BLOCKED' },
-  { _id: 'aud-9008', timestamp: '2026-08-02T21:20:30+05:30', user: 'owner@smartledger.ai', role: 'Business Owner', category: 'INVOICING', event: 'Generated Draft Invoice for Tata Steel Corp (Turnover: ₹4,85,000)', severity: 'INFO', ip: '192.168.1.115', status: 'SUCCESS' },
-  { _id: 'aud-9009', timestamp: '2026-08-02T20:50:44+05:30', user: 'wm@smartledger.ai', role: 'Warehouse Manager', category: 'INVENTORY', event: 'Low stock threshold alert triggered for SKU-IND-09 (Remaining: 4 units)', severity: 'WARNING', ip: '192.168.1.202', status: 'ALERT' },
-  { _id: 'aud-9010', timestamp: '2026-08-02T20:10:15+05:30', user: 'admin@smartledger.ai', role: 'Admin', category: 'RBAC', event: 'Updated user permissions for Corporate Auditor account', severity: 'INFO', ip: '192.168.1.104', status: 'SUCCESS' }
-];
-
 const AuditLog = () => {
-  const [logs, setLogs]               = useState(INITIAL_AUDIT_LOGS);
+  const [logs, setLogs]               = useState([]);
   const [categoryFilter, setCategory]   = useState('all'); // all, SECURITY, INVOICING, INVENTORY, ANOMALY
   const [search, setSearch]             = useState('');
   const [selectedLog, setSelectedLog]   = useState(null);
@@ -52,7 +39,7 @@ const AuditLog = () => {
     const fetchAudit = async () => {
       try {
         const res = await client.get('/audit');
-        if (res.data?.data && res.data.data.length > 0) {
+        if (res.data?.data && Array.isArray(res.data.data)) {
           const mapped = res.data.data.map(l => ({
             _id: l._id || l.log_id,
             timestamp: l.timestamp || l.createdAt,
@@ -65,9 +52,12 @@ const AuditLog = () => {
             status: l.status || 'SUCCESS'
           }));
           setLogs(mapped);
+        } else {
+          setLogs([]);
         }
       } catch (err) {
         console.error('Error fetching audit logs:', err);
+        setLogs([]);
       }
     };
     fetchAudit();
@@ -289,7 +279,16 @@ const AuditLog = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map(l => {
+              {filteredLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={9} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <FiShield size={36} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
+                    <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>No Audit Logs Recorded</div>
+                    <div style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>System events, security audits, and invoice lifecycle events will stream here automatically.</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredLogs.map(l => {
                 const isCrit = l.severity === 'CRITICAL' || l.severity === 'WARNING';
                 return (
                   <tr key={l._id} className="aud-row aud-row-hover" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -326,7 +325,7 @@ const AuditLog = () => {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

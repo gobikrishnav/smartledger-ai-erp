@@ -20,17 +20,8 @@ import {
   buttonPress, init3DCardHover, pulseNeonBorder, badgePulse, modalIn
 } from '../utils/animations';
 
-const INITIAL_SUPPLIERS = [
-  { _id: 'sup-101', vendorName: 'TATA STEEL & METALS CORP', gstin: '27AAACT2727Q1Z5', stateCode: '27', email: 'procurement@tatasteel.com', phone: '+91 22 6665 8282', leadTimeDays: 7, riskScore: 12, rating: 4.8, terms: 'NET 45', activePOs: 4, totalSpend: 1450000 },
-  { _id: 'sup-102', vendorName: 'RELIANCE INDUSTRIAL SYNTHETICS', gstin: '24AAACR5055K1Z8', stateCode: '24', email: 'supplies@ril.com', phone: '+91 79 2656 3333', leadTimeDays: 5, riskScore: 8, rating: 4.8, terms: 'NET 30', activePOs: 6, totalSpend: 2800000 },
-  { _id: 'sup-103', vendorName: 'LARSEN & TOUBRO ELECTRICALS', gstin: '29AAACL1234F1Z2', stateCode: '29', email: 'parts@lnt.com', phone: '+91 80 2502 0000', leadTimeDays: 10, riskScore: 15, rating: 4.7, terms: 'NET 60', activePOs: 3, totalSpend: 1890000 },
-  { _id: 'sup-104', vendorName: 'SIEMENS AUTOMATION INDIA', gstin: '27AAACS8989P1Z9', stateCode: '27', email: 'contact@siemens.co.in', phone: '+91 22 3967 7000', leadTimeDays: 14, riskScore: 22, rating: 4.5, terms: 'NET 30', activePOs: 2, totalSpend: 1120000 },
-  { _id: 'sup-105', vendorName: 'HAVELLS INDUSTRIAL LIGHTING', gstin: '07AAACH6666G1Z3', stateCode: '07', email: 'sales@havells.com', phone: '+91 11 4700 0000', leadTimeDays: 6, riskScore: 10, rating: 4.8, terms: 'NET 30', activePOs: 5, totalSpend: 840000 },
-  { _id: 'sup-106', vendorName: 'CROMPTON GREAVES POWER', gstin: '27AAACC9999J1Z1', stateCode: '27', email: 'supply@crompton.co.in', phone: '+91 22 2423 7777', leadTimeDays: 8, riskScore: 35, rating: 4.2, terms: 'NET 15', activePOs: 1, totalSpend: 420000 }
-];
-
 const Suppliers = () => {
-  const [suppliers, setSuppliers]         = useState(INITIAL_SUPPLIERS);
+  const [suppliers, setSuppliers]         = useState([]);
   const [filterMode, setFilterMode]       = useState('all'); // all, lowRisk, highRisk, preferred
   const [search, setSearch]               = useState('');
 
@@ -51,9 +42,9 @@ const Suppliers = () => {
 
   // PO creation form state
   const [poItems, setPoItems] = useState([
-    { sku: 'SKU-ELEC-01', name: 'Industrial Solar Core Inverter', hsnCode: '8501', qty: 10, unitPrice: 45000, taxRate: 18 }
+    { sku: '', name: '', hsnCode: '8501', qty: 1, unitPrice: 0, taxRate: 18 }
   ]);
-  const [poNotes, setPoNotes] = useState('Urgent delivery required for Q3 production schedule.');
+  const [poNotes, setPoNotes] = useState('');
 
   const pageRef     = useRef(null);
   const supplierModalRef = useRef(null);
@@ -63,11 +54,14 @@ const Suppliers = () => {
     const fetchSuppliers = async () => {
       try {
         const res = await client.get('/suppliers');
-        if (res.data?.data && res.data.data.length > 0) {
+        if (res.data?.data && Array.isArray(res.data.data)) {
           setSuppliers(res.data.data);
+        } else {
+          setSuppliers([]);
         }
       } catch (err) {
         console.error('Error fetching suppliers:', err);
+        setSuppliers([]);
       }
     };
     fetchSuppliers();
@@ -312,7 +306,16 @@ const Suppliers = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredSuppliers.map(s => {
+              {filteredSuppliers.length === 0 ? (
+                <tr>
+                  <td colSpan={10} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <FiTruck size={36} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
+                    <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>No Vendors Registered</div>
+                    <div style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>Your supplier directory is empty. Click "+ Add New Supplier" above to register your first vendor partner.</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredSuppliers.map(s => {
                 const isHighRisk = s.riskScore > 40;
                 return (
                   <tr key={s._id} className="sup-row sup-row-hover" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -358,7 +361,7 @@ const Suppliers = () => {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

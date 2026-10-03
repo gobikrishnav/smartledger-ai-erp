@@ -19,17 +19,8 @@ import {
   buttonPress, init3DCardHover, pulseNeonBorder, badgePulse, modalIn
 } from '../utils/animations';
 
-const INITIAL_CLIENTS_DATA = [
-  { _id: 'cli-001', businessName: 'TechCorp India', gstin: '29ABCDE1234F1Z5', stateCode: '29', email: 'contact@techcorp.in', phone: '+91 80 4123 4567', riskScore: 45, status: 'flagged', creditLimit: 2500000, avgDelayDays: 0.0, invoicesCount: 15, totalBilled: 2212434 },
-  { _id: 'cli-002', businessName: 'Disha Traders', gstin: '27FGHIJ5678K1Z6', stateCode: '27', email: 'info@dishatraders.com', phone: '+91 22 2844 1122', riskScore: 45, status: 'flagged', creditLimit: 2500000, avgDelayDays: 0.0, invoicesCount: 7, totalBilled: 1780525 },
-  { _id: 'cli-003', businessName: 'Gujarat Textiles', gstin: '24KLMNO9012P1Z8', stateCode: '24', email: 'gujtext@gmail.com', phone: '+91 79 2656 4455', riskScore: 25, status: 'active', creditLimit: 2500000, avgDelayDays: 0.0, invoicesCount: 17, totalBilled: 3973021 },
-  { _id: 'cli-004', businessName: 'TamilNadu Spices', gstin: '33PQRST3456U1Z9', stateCode: '33', email: 'sales@tnspices.com', phone: '+91 44 2829 5566', riskScore: 55, status: 'flagged', creditLimit: 2500000, avgDelayDays: 11.2, invoicesCount: 5, totalBilled: 1717052 },
-  { _id: 'cli-005', businessName: 'APOLLO HOSPITALS ENTERPRISE LTD', gstin: '33AAACA4444A1Z1', stateCode: '33', email: 'accounts@apollo.co.in', phone: '+91 44 2829 0200', riskScore: 14, status: 'active', creditLimit: 2500000, avgDelayDays: 2.1, invoicesCount: 12, totalBilled: 3450000 },
-  { _id: 'cli-006', businessName: 'WIPRO TECHNOLOGIES INDIA', gstin: '29AAACW1234F1Z8', stateCode: '29', email: 'finance@wipro.com', phone: '+91 80 2844 0011', riskScore: 8, status: 'active', creditLimit: 5000000, avgDelayDays: 1.2, invoicesCount: 18, totalBilled: 6890000 }
-];
-
 const Clients = () => {
-  const [clientsList, setClientsList] = useState(INITIAL_CLIENTS_DATA);
+  const [clientsList, setClientsList] = useState([]);
   const [filterMode, setFilterMode]   = useState('all'); // all, active, flagged, highLimit
   const [search, setSearch]           = useState('');
   const [loading, setLoading]         = useState(true);
@@ -55,17 +46,19 @@ const Clients = () => {
     setLoading(true);
     try {
       const res = await client.get('/clients');
-      if (Array.isArray(res.data) && res.data.length > 0) {
+      if (Array.isArray(res.data)) {
         setClientsList(res.data.map(c => ({
           ...c,
           creditLimit: c.creditLimit || 2500000,
-          avgDelayDays: c.avgDelayDays || (c.riskScore ? (c.riskScore / 5).toFixed(1) : 2.5),
-          invoicesCount: c.invoicesCount || Math.floor(Math.random() * 15) + 3,
-          totalBilled: c.totalBilled || Math.floor(Math.random() * 4000000) + 800000
+          avgDelayDays: c.avgDelayDays || 0,
+          invoicesCount: c.invoicesCount || 0,
+          totalBilled: c.totalBilled || 0
         })));
+      } else {
+        setClientsList([]);
       }
     } catch {
-      // Keep initial authentic clients
+      setClientsList([]);
     } finally {
       setLoading(false);
     }
@@ -342,7 +335,16 @@ const Clients = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredClients.map(c => {
+              {filteredClients.length === 0 ? (
+                <tr>
+                  <td colSpan={10} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <FiUsers size={36} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
+                    <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>No Clients Registered</div>
+                    <div style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>Your client registry is clean and ready. Click "+ Add New Client" above to onboard your first customer.</div>
+                  </td>
+                </tr>
+              ) : (
+                filteredClients.map(c => {
                 const isFlagged = c.status === 'flagged' || c.riskScore > 40;
                 return (
                   <tr key={c._id} className="cli-row cli-row-hover" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -364,7 +366,7 @@ const Clients = () => {
                     </td>
                     <td style={{ padding: '1rem 1.25rem' }}>
                       <span className={`badge badge-${isFlagged ? 'danger' : c.riskScore > 25 ? 'warning' : 'success'}`} style={{ borderRadius: '9999px', padding: '0.3rem 0.65rem', fontWeight: 800 }}>
-                        {c.riskScore || '12'} / 100
+                        {c.riskScore ?? 0} / 100
                       </span>
                     </td>
                     <td style={{ padding: '1rem 1.25rem' }}>
@@ -373,10 +375,10 @@ const Clients = () => {
                       </span>
                     </td>
                     <td style={{ padding: '1rem 1.25rem', fontWeight: 700 }}>
-                      {c.invoicesCount || '8'} invoices
+                      {c.invoicesCount ?? 0} invoices
                     </td>
                     <td style={{ padding: '1rem 1.25rem', fontWeight: 800, color: 'var(--accent-green)' }}>
-                      {fmt(c.totalBilled)}
+                      {fmt(c.totalBilled || 0)}
                     </td>
                     <td style={{ padding: '1rem 1.25rem' }}>
                       <button
@@ -390,7 +392,7 @@ const Clients = () => {
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>

@@ -14,8 +14,8 @@ async function seedERPDatabase() {
   try {
     const Business = require('../models/Business');
 
-    // If clean slate requested or production without explicit AUTO_SEED=true
-    if (process.env.START_CLEAN === 'true' || process.env.AUTO_SEED === 'false') {
+    // Default to clean slate brand new mode unless AUTO_SEED is explicitly requested
+    if (process.env.AUTO_SEED !== 'true') {
       console.log('✨ [BRAND NEW MODE] Clean Slate active. Skipping automatic mock transaction seeding.');
       
       const adminExists = await StaffUser.findOne({ email: 'admin@smartledger.ai' });
