@@ -128,22 +128,26 @@ Render (`render.com`) is the standard cloud host for full-stack Node.js applicat
 
 ---
 
-## Step 3: Deploy Frontend to Vercel (Optional Split Deployment)
+## Step 3: Deploy Frontend to Vercel (Split Deployment with Render Backend)
 
-If you prefer hosting the React frontend on Vercel's global CDN while having Render host the API:
+SmartLedger AI is pre-configured with root and client `vercel.json` rewrite manifests that automatically link Vercel to your live Render backend (`https://smartledger-ai-erp.onrender.com`):
 
-1. Push your code to GitHub.
-2. Log in to [vercel.com](https://vercel.com) and click **"Add New..."** -> **"Project"**.
-3. Import your GitHub repository.
-4. In Project Settings:
-   - **Framework Preset:** `Vite`
-   - **Root Directory:** Click "Edit" and select `client` (or use the root `vercel.json` provided).
+1. **Import GitHub Repository:**
+   - Log in to [vercel.com](https://vercel.com) and click **"Add New..."** ➔ **"Project"**.
+   - Import your repository: `gobikrishnav/smartledger-ai-erp`.
+2. **Project Settings:**
+   - **Framework Preset:** Leave as `Other` or `Vite`.
+   - **Root Directory:**
+     - Option A: Leave as `./` (the root). Our root `vercel.json` and `npm run build` will build the client and output to `dist`.
+     - Option B: Click "Edit" and choose `client`. Our `client/vercel.json` will route to Render.
    - **Build Command:** `npm run build`
    - **Output Directory:** `dist`
-5. In **Environment Variables**:
-   - Add `VITE_API_URL` = Your Render backend URL (e.g. `https://smartledger-ai-erp.onrender.com`).
-6. Click **"Deploy"**.
-7. Vercel automatically deploys the frontend with clean single-page application routing (`vercel.json`) and connects to your Render backend.
+3. **Environment Variables (Optional):**
+   - `VITE_API_URL` = `https://smartledger-ai-erp.onrender.com`
+   - `VITE_SOCKET_URL` = `https://smartledger-ai-erp.onrender.com`
+4. **Click "Deploy":**
+   - Vercel builds the React Vite single-page application and provides your public domain (e.g. `https://smartledger-ai-erp.vercel.app`).
+   - All API queries (`/api/*`) are transparently proxied to your Render backend and MongoDB Atlas cluster!
 
 ---
 
