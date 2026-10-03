@@ -68,10 +68,13 @@ app.use('/api/business', businessRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {
+  const mongoose = require('mongoose');
   res.json({
     status: 'ONLINE',
     system: 'SmartLedger AI ERP Backend Gateway',
     version: '2.0.0',
+    db_connected: mongoose.connection.readyState === 1,
+    db_host: mongoose.connection.host || 'connecting',
     timestamp: new Date().toISOString()
   });
 });
@@ -101,16 +104,14 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-  await connectDB();
-  await seedERPDatabase();
+server.listen(PORT, '0.0.0.0', async () => {
+  console.log(`🚀 SmartLedger AI ERP Backend Gateway running on http://0.0.0.0:${PORT}`);
+  console.log(`📡 Socket.io Gateway Active on port ${PORT}`);
 
-  server.listen(PORT, () => {
-    console.log(`🚀 SmartLedger AI ERP Backend Gateway running on http://localhost:${PORT}`);
-    console.log(`📡 Socket.io Gateway Active on port ${PORT}`);
-  });
-};
-
-startServer().catch(err => {
-  console.error('Fatal Server Startup Failure:', err);
+  try {
+    await connectDB();
+    await seedERPDatabase();
+  } catch (err) {
+    console.error('Database connection or seeding failure:', err.message);
+  }
 });

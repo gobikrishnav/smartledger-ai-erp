@@ -6,8 +6,25 @@ try {
   dns.setServers(['8.8.8.8', '1.1.1.1']);
 } catch (e) {}
 
+function sanitizeMongoUri(rawUri) {
+  if (!rawUri) return rawUri;
+  const match = rawUri.match(/^(mongodb(?:\+srv)?:\/\/)([^:]+):(.+)@([^@]+)$/);
+  if (match) {
+    const [, protocol, user, pass, hostAndQuery] = match;
+    try {
+      const decoded = decodeURIComponent(pass);
+      const encoded = encodeURIComponent(decoded);
+      return `${protocol}${user}:${encoded}@${hostAndQuery}`;
+    } catch (e) {
+      return rawUri;
+    }
+  }
+  return rawUri;
+}
+
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/smartledger_erp_db';
+  const rawUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/smartledger_erp_db';
+  const uri = sanitizeMongoUri(rawUri);
   const isAtlas = uri.startsWith('mongodb+srv://') || uri.includes('mongodb.net');
 
   try {
