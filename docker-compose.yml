@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: smartledger-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - smartledger-network
+
+  ai-services:
+    build:
+      context: ./ai-services
+      dockerfile: Dockerfile
+    container_name: smartledger-ai
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    networks:
+      - smartledger-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartledger-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/smartledger_db
+      - JWT_SECRET=smartledger_ai_super_secret_key_2026
+      - AI_SERVICE_URL=http://ai-services:8000
+    depends_on:
+      - mongo
+      - ai-services
+    networks:
+      - smartledger-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: smartledger-client
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - smartledger-network
+
+volumes:
+  mongo_data:
+    driver: local
+
+networks:
+  smartledger-network:
+    driver: bridge

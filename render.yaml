@@ -1,0 +1,29 @@
+# Render Blueprint for SmartLedger AI ERP
+# Deploying to Render ("blender"):
+# 1. Push your repository to GitHub / GitLab
+# 2. In Render Dashboard (render.com), click "New +" -> "Blueprint"
+# 3. Select this repository. Render automatically reads this render.yaml and configures the service!
+
+services:
+  - type: web
+    name: smartledger-ai-erp
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false # Paste your free MongoDB Atlas connection string here (mongodb+srv://...)
+      - key: JWT_SECRET
+        generateValue: true # Render will automatically generate a secure random 32-character key
+      - key: START_CLEAN
+        value: "true" # Starts as a brand new fresh business ready for user input
+      - key: AUTO_SEED
+        value: "false"

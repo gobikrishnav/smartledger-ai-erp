@@ -1,0 +1,31 @@
+{
+  "name": "smartledger-ai-mern",
+  "version": "1.0.0",
+  "description": "SmartLedger AI - AI-Driven ERP & Intelligent Predictive Ledger System",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "backend": "node backend/server.js",
+    "ai": "cd ai-services && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm run build",
+    "client-install": "cd client && npm install",
+    "backend-install": "cd backend && npm install",
+    "ai-install": "cd ai-services && pip install -r requirements.txt",
+    "full-setup": "npm run backend-install && npm run client-install && npm run ai-install"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "mongoose": "^8.0.0",
+    "dotenv": "^16.4.5",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "ws": "^8.16.0",
+    "uuid": "^9.0.0",
+    "@google/genai": "^2.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
