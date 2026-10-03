@@ -117,11 +117,11 @@ Render (`render.com`) is the standard cloud host for full-stack Node.js applicat
    | Key | Value | Note |
    |---|---|---|
    | `NODE_ENV` | `production` | Enables production optimizations |
-   | `PORT` | `5000` | Port handled by Render router |
-   | `MONGODB_URI` | `mongodb+srv://...` | Your Atlas connection string |
+   | `MONGODB_URI` | `mongodb+srv://admin_user:Admin%40123@cluster0.uelwksj.mongodb.net/smartledger_erp?retryWrites=true&w=majority&appName=Cluster0` | Your Atlas connection string |
    | `JWT_SECRET` | *(Generate a 32-char string)* | e.g. `smartledger_live_jwt_prod_2026` |
    | `START_CLEAN` | `true` | Boots brand new for real user inputs |
    | `AUTO_SEED` | `false` | Prevents fake mock data insertion |
+   *(Note: Do not define `PORT` manually; Render automatically provides and manages `process.env.PORT`).*
 5. Click **"Create Web Service"**.
 6. Once deployed, Render provides your public URL (e.g. `https://smartledger-ai-erp.onrender.com`).
    - Open that URL: The complete React web app, REST API, and Socket.io gateway are all live!

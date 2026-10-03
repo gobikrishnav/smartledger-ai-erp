@@ -2,9 +2,12 @@ const dns = require('dns');
 const mongoose = require('mongoose');
 
 // Configure reliable DNS servers for MongoDB Atlas SRV resolution
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch (e) {}
+// On cloud platforms (Render/AWS/GCP), preserve container system DNS. In local dev, use Google/Cloudflare fallback.
+if (!process.env.RENDER) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch (e) {}
+}
 
 function sanitizeMongoUri(rawUri) {
   if (!rawUri) return rawUri;
@@ -45,6 +48,9 @@ const connectDB = async () => {
     setTimeout(async () => {
       try {
         console.log('🔄 Retrying MongoDB connection...');
+        try {
+          dns.setServers(['8.8.8.8', '1.1.1.1']);
+        } catch (e) {}
         await mongoose.connect(uri, {
           serverSelectionTimeoutMS: 10000,
           socketTimeoutMS: 45000

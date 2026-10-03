@@ -89,6 +89,15 @@ if (fs.existsSync(clientDistPath)) {
     }
     res.sendFile(path.join(clientDistPath, 'index.html'));
   });
+} else {
+  app.get('/', (req, res) => {
+    res.status(200).json({
+      status: 'ONLINE',
+      system: 'SmartLedger AI ERP Backend Gateway',
+      version: '2.0.0',
+      message: 'Backend API is active. Build frontend SPA via: npm run build'
+    });
+  });
 }
 
 // Global 404 Handler (for unmatched API endpoints)

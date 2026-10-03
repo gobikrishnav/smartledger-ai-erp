@@ -12,7 +12,7 @@
     "ai": "cd ai-services && python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
     "client": "cd client && npm run dev",
     "build": "cd client && npm install && npm run build",
-    "postinstall": "cd client && npm install",
+    "postinstall": "cd client && npm install && npm run build",
     "client-install": "cd client && npm install",
     "backend-install": "cd backend && npm install",
     "ai-install": "cd ai-services && pip install -r requirements.txt",
