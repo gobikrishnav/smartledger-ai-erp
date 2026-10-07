@@ -12,9 +12,12 @@ export const SocketProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [recentLiveInvoices, setRecentLiveInvoices] = useState([]);
 
+  const userRole = user?.role || null;
+
   useEffect(() => {
     // Connect to backend Socket.io gateway on Render or localhost
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://smartledger-ai-erp.onrender.com');
+    const isRender = typeof window !== 'undefined' && window.location.hostname.includes('onrender.com');
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || (isRender ? window.location.origin : (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://smartledger-ai-erp.onrender.com'));
     const socketClient = io(socketUrl, {
       transports: ['websocket', 'polling'],
       autoConnect: true
@@ -22,8 +25,8 @@ export const SocketProvider = ({ children }) => {
 
     socketClient.on('connect', () => {
       console.log('📡 Connected to SmartLedger Socket.io Gateway:', socketClient.id);
-      if (user?.role) {
-        socketClient.emit('join_role_room', user.role);
+      if (userRole) {
+        socketClient.emit('join_role_room', userRole);
       }
     });
 
@@ -54,7 +57,7 @@ export const SocketProvider = ({ children }) => {
     return () => {
       socketClient.disconnect();
     };
-  }, [user?.role]);
+  }, [userRole]);
 
   return (
     <SocketContext.Provider value={{

@@ -2,11 +2,11 @@ const dns = require('dns');
 const mongoose = require('mongoose');
 
 // Configure reliable DNS servers for MongoDB Atlas SRV resolution
-// On cloud platforms (Render/AWS/GCP), preserve container system DNS. In local dev, use Google/Cloudflare fallback.
-if (!process.env.RENDER) {
-  try {
-    dns.setServers(['8.8.8.8', '1.1.1.1']);
-  } catch (e) {}
+// Cloud container platforms (Render/Heroku) require public recursive DNS (8.8.8.8, 1.1.1.1) to resolve Atlas SRV records
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+} catch (e) {
+  console.warn('DNS server configuration notice:', e.message);
 }
 
 function sanitizeMongoUri(rawUri) {
@@ -37,13 +37,18 @@ const connectDB = async () => {
   try {
     console.log(`🔌 Initializing database connection... (${isAtlas ? 'MongoDB Atlas Cloud Cluster' : 'Local MongoDB Instance'})`);
     
+    try {
+      dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+    } catch (e) {}
+
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 15000,
       socketTimeoutMS: 45000,
       maxPoolSize: 10
     });
 
     console.log(`✓ [DATABASE ONLINE] Connected to MongoDB: ${mongoose.connection.host} / DB: ${mongoose.connection.name}`);
+    return mongoose.connection;
   } catch (err) {
     console.error('! MongoDB connection failed:', err.message);
     console.error('  Connection URI schema:', uri.split('@')[1] ? `...@${uri.split('@')[1]}` : uri);
@@ -53,13 +58,19 @@ const connectDB = async () => {
       try {
         console.log('🔄 Retrying MongoDB connection...');
         try {
-          dns.setServers(['8.8.8.8', '1.1.1.1']);
+          dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
         } catch (e) {}
         await mongoose.connect(uri, {
-          serverSelectionTimeoutMS: 10000,
+          serverSelectionTimeoutMS: 15000,
           socketTimeoutMS: 45000
         });
         console.log(`✓ MongoDB reconnected successfully: ${mongoose.connection.host}`);
+        try {
+          const { seedERPDatabase } = require('../utils/seed');
+          await seedERPDatabase();
+        } catch (seedErr) {
+          console.error('Seeding on reconnect error:', seedErr.message);
+        }
       } catch (retryErr) {
         console.error('! MongoDB reconnect attempt failed:', retryErr.message);
       }

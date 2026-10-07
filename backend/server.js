@@ -27,7 +27,10 @@ server.listen(PORT, '0.0.0.0', async () => {
 
   try {
     await connectDB();
-    await seedERPDatabase();
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState === 1) {
+      await seedERPDatabase();
+    }
   } catch (err) {
     console.error('Database connection or seeding failure:', err.message);
   }

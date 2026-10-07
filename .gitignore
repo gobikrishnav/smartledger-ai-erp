@@ -6,8 +6,6 @@ ai-services/__pycache__/
 *.pyc
 
 # Production Builds
-dist/
-client/dist/
 .dist/
 
 # Binaries & Large Tools
