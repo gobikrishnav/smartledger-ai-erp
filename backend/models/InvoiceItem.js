@@ -8,6 +8,9 @@ const invoiceItemSchema = new mongoose.Schema({
   quantity: { type: Number, required: true, min: 1 },
   unit_price: { type: Number, required: true, min: 0 },
   cost_price: { type: Number, default: 0 },
+  case_content: { type: Number, default: 36 },
+  brand: { type: String, default: 'Karpagam' },
+  no_of_cases: { type: Number, default: 1 },
   taxable_amount: { type: Number, required: true },
   gst_rate: { type: Number, required: true }, // e.g. 18
   cgst: { type: Number, default: 0 },

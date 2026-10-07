@@ -21,6 +21,16 @@ const invoiceSchema = new mongoose.Schema({
   igst_total: { type: Number, default: 0 },
   discount_amount: { type: Number, default: 0 },
   net_total: { type: Number, required: true, min: 0 },
+  other_charges: { type: Number, default: 0 },
+  packaging_charges: { type: Number, default: 0 },
+  total_cases: { type: Number, default: 0 },
+  transport_name: { type: String, default: '' },
+  vehicle_number: { type: String, default: '' },
+  amount_in_words: { type: String, default: '' },
+  terms_conditions: { type: String, default: 'Thank you for doing business with us.' },
+  received_amount: { type: Number, default: 0 },
+  balance_amount: { type: Number, default: 0 },
+  company_name: { type: String, default: 'VELAVAN CRACKERS' },
   crypto_hash: { type: String, required: true }, // SHA-256 Block Hash
   prev_hash: { type: String, default: '0000000000000000000000000000000000000000000000000000000000000000' },
   payment_method: { 
@@ -30,7 +40,7 @@ const invoiceSchema = new mongoose.Schema({
   },
   payment_status: { 
     type: String, 
-    enum: ['PAID', 'CREDIT_PENDING', 'VOID'], 
+    enum: ['PAID', 'CREDIT_PENDING', 'VOID', 'DRAFT', 'PENDING'], 
     default: 'PAID' 
   },
   tax_payloads: [

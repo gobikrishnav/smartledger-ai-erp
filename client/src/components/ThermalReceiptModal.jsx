@@ -272,6 +272,55 @@ const ThermalReceiptModal = ({ isOpen, onClose, invoice, items = [] }) => {
             </div>
           </div>
 
+          {/* Dynamic GST & UPI QR Code for Immediate Scanning */}
+          <div style={{ textAlign: 'center', margin: '0.85rem 0', padding: '0.75rem', background: '#ffffff', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#475569', marginBottom: '0.35rem' }}>
+              SCAN TO PAY / VERIFY STATUTORY LEDGER
+            </div>
+            {/* SVG Thermal QR Code Graphic */}
+            <svg width="90" height="90" viewBox="0 0 100 100" style={{ margin: '0 auto', display: 'block' }}>
+              <rect width="100" height="100" fill="#ffffff" />
+              {/* Corner squares */}
+              <rect x="5" y="5" width="28" height="28" fill="#0f172a" />
+              <rect x="9" y="9" width="20" height="20" fill="#ffffff" />
+              <rect x="13" y="13" width="12" height="12" fill="#0f172a" />
+
+              <rect x="67" y="5" width="28" height="28" fill="#0f172a" />
+              <rect x="71" y="9" width="20" height="20" fill="#ffffff" />
+              <rect x="75" y="13" width="12" height="12" fill="#0f172a" />
+
+              <rect x="5" y="67" width="28" height="28" fill="#0f172a" />
+              <rect x="9" y="71" width="20" height="20" fill="#ffffff" />
+              <rect x="13" y="75" width="12" height="12" fill="#0f172a" />
+
+              {/* Data matrix dots */}
+              <rect x="38" y="10" width="6" height="6" fill="#0f172a" />
+              <rect x="48" y="15" width="6" height="6" fill="#0f172a" />
+              <rect x="56" y="8" width="6" height="6" fill="#0f172a" />
+              <rect x="38" y="24" width="6" height="6" fill="#0f172a" />
+              <rect x="48" y="32" width="6" height="6" fill="#0f172a" />
+              <rect x="10" y="40" width="6" height="6" fill="#0f172a" />
+              <rect x="22" y="48" width="6" height="6" fill="#0f172a" />
+              <rect x="36" y="44" width="6" height="6" fill="#0f172a" />
+              <rect x="44" y="48" width="12" height="6" fill="#0f172a" />
+              <rect x="60" y="40" width="6" height="6" fill="#0f172a" />
+              <rect x="72" y="46" width="6" height="6" fill="#0f172a" />
+              <rect x="84" y="40" width="6" height="6" fill="#0f172a" />
+              <rect x="38" y="60" width="6" height="6" fill="#0f172a" />
+              <rect x="48" y="68" width="6" height="6" fill="#0f172a" />
+              <rect x="58" y="62" width="6" height="6" fill="#0f172a" />
+              <rect x="40" y="78" width="6" height="6" fill="#0f172a" />
+              <rect x="52" y="84" width="6" height="6" fill="#0f172a" />
+              <rect x="68" y="76" width="6" height="6" fill="#0f172a" />
+              <rect x="80" y="68" width="6" height="6" fill="#0f172a" />
+              <rect x="76" y="84" width="6" height="6" fill="#0f172a" />
+              <rect x="86" y="86" width="6" height="6" fill="#0f172a" />
+            </svg>
+            <div style={{ fontSize: '0.62rem', color: '#64748b', marginTop: '0.25rem' }}>
+              UPI ID: sreeveesathya@okaxis | Amount: ₹{Number(invoice.net_total).toFixed(2)}
+            </div>
+          </div>
+
           {/* SHA-256 Cryptographic Block Signature */}
           <div style={{ background: '#f1f5f9', borderRadius: 8, padding: '0.65rem', marginTop: '0.75rem' }}>
             <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

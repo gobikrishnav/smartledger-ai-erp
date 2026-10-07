@@ -8,9 +8,13 @@ const productSchema = new mongoose.Schema({
   cost_price: { type: Number, required: true, min: 0 },
   stock_quantity: { type: Number, default: 0 },
   reorder_level: { type: Number, default: 10 },
+  hsn_code: { type: String, default: '3604' },
+  case_content: { type: Number, default: 36 },
+  brand: { type: String, default: 'Karpagam' },
+  no_discount: { type: Boolean, default: false },
   batch_number: { type: String, default: 'BAT-2026-001' },
   expiry_date: { type: Date },
-  supplier_name: { type: String, default: 'Universal Industrial Logistics' },
+  supplier_name: { type: String, default: 'SREEVEESATHYA AGENCIES' },
   created_at: { type: Date, default: Date.now }
 });
 

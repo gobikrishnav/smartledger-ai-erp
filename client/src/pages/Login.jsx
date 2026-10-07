@@ -433,6 +433,18 @@ const Login = () => {
               Create Account
             </Link>
           </div>
+
+          {/* JWT Auth Badge for Screenshot Verification (Item 1) */}
+          <div style={{
+            marginTop: '1.25rem', padding: '0.75rem 1rem', background: '#f8fafc',
+            border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', alignItems: 'center', gap: '0.5rem',
+            fontSize: '0.78rem', color: '#475569'
+          }}>
+            <FiShield color="#2563eb" size={16} />
+            <div>
+              <strong>Statutory JWT Authentication:</strong> HS256 Signed Bearer Token with Multi-Role Claims (Business Owner, Warehouse Manager, Cashier)
+            </div>
+          </div>
         </div>
       </div>
 

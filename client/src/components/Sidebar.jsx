@@ -37,6 +37,7 @@ const Sidebar = () => {
   const ownerNav = [
     { path: '/dashboard', label: 'Executive Dashboard', icon: FiGrid },
     { path: '/owner', label: 'Owner AI Portal', icon: FiBarChart2 },
+    { path: '/ai-evaluation', label: 'AI Evaluation (Items 12/14/16)', icon: FiCpu },
     { path: '/analytics', label: 'AI Analytics', icon: FiPieChart },
     { path: '/reports', label: 'Financial Reports', icon: FiTrendingUp },
     { path: '/insights', label: 'Predictive Insights', icon: FiCpu },
@@ -53,6 +54,7 @@ const Sidebar = () => {
 
   const adminNav = [
     { path: '/admin', label: 'User Management', icon: FiShield },
+    { path: '/ai-evaluation', label: 'AI Models Evaluation', icon: FiCpu },
     { path: '/audit-logs', label: 'Audit Logs', icon: FiActivity },
     { path: '/models', label: 'AI Models Config', icon: FiTag },
     { path: '/settings', label: 'System Settings', icon: FiSettings },

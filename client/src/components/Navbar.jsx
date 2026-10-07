@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useBusiness } from '../context/BusinessContext';
 import client from '../api/client';
 import { useNavigate } from 'react-router-dom';
+import ScreenshotGuideModal from './ScreenshotGuideModal';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -11,6 +12,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -249,6 +251,29 @@ const Navbar = () => {
           )}
         </div>
 
+        {/* 18 Screenshot Pages Guide Hub */}
+        <button
+          onClick={() => setShowGuideModal(true)}
+          style={{
+            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 10,
+            padding: '0.45rem 0.95rem',
+            fontSize: '0.82rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            boxShadow: '0 4px 12px rgba(37,99,235,0.25)',
+            whiteSpace: 'nowrap'
+          }}
+          title="Open Guide with links to all 18 implementation screenshot pages"
+        >
+          <span>📸 18 Screenshot Pages</span>
+        </button>
+
         {/* Settings Icon */}
         <button
           className="ih-circle-btn"
@@ -268,6 +293,12 @@ const Navbar = () => {
           <FiLogOut size={18} />
         </button>
       </div>
+
+      {/* 18 Screenshot Pages Modal */}
+      <ScreenshotGuideModal
+        isOpen={showGuideModal}
+        onClose={() => setShowGuideModal(false)}
+      />
     </header>
   );
 };

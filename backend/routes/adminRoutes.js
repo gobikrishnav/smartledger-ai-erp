@@ -205,11 +205,35 @@ router.post('/reset-database', async (req, res) => {
         message: '📦 Sample enterprise dataset re-loaded successfully!',
         mode: 'seed_sample'
       });
+    } else if (mode === 'seed_sivakasi') {
+      const { seedSivakasiData } = require('../utils/seedSivakasi');
+      const result = await seedSivakasiData(true);
+      return res.json({
+        success: true,
+        message: '🎆 Sivakasi Pricelist 2026 (185 Products) & Velavan Crackers Estimate #1384 loaded successfully!',
+        mode: 'seed_sivakasi',
+        result
+      });
     }
 
-    res.status(400).json({ error: `Invalid reset mode '${mode}'. Use 'clean_slate' or 'seed_sample'.` });
+    res.status(400).json({ error: `Invalid reset mode '${mode}'. Use 'clean_slate', 'seed_sample', or 'seed_sivakasi'.` });
   } catch (err) {
     console.error('Reset Database Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/seed-sivakasi
+router.post('/seed-sivakasi', async (req, res) => {
+  try {
+    const { seedSivakasiData } = require('../utils/seedSivakasi');
+    const result = await seedSivakasiData(req.body.force === true);
+    res.json({
+      success: true,
+      message: '🎆 SREEVEESATHYA AGENCIES & VELAVAN CRACKERS master catalog loaded successfully!',
+      result
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });

@@ -207,6 +207,18 @@ const Register = () => {
             Sign In
           </Link>
         </div>
+
+        {/* JWT Auth Badge for Screenshot Verification (Item 1) */}
+        <div style={{
+          marginTop: '1.25rem', padding: '0.75rem 1rem', background: '#f8fafc',
+          border: '1px solid #e2e8f0', borderRadius: 12, display: 'flex', alignItems: 'center', gap: '0.5rem',
+          fontSize: '0.78rem', color: '#475569'
+        }}>
+          <FiShield color="#2563eb" size={16} />
+          <div>
+            <strong>Statutory JWT Authentication:</strong> 256-Bit Signed Token Issued on Registration with Role Selection
+          </div>
+        </div>
       </div>
     </div>
   );

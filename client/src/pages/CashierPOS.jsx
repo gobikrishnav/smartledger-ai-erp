@@ -9,6 +9,7 @@ import RoleNavbar from '../components/RoleNavbar';
 import BarcodeScannerModal from '../components/BarcodeScannerModal';
 import ThermalReceiptModal from '../components/ThermalReceiptModal';
 import NotificationDrawer from '../components/NotificationDrawer';
+import InvoiceViewModal from '../components/InvoiceViewModal';
 
 const CashierPOS = () => {
   const [products, setProducts] = useState([]);
@@ -22,6 +23,7 @@ const CashierPOS = () => {
   // Modals
   const [showScanner, setShowScanner] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [completedInvoice, setCompletedInvoice] = useState(null);
   const [completedItems, setCompletedItems] = useState([]);
@@ -266,7 +268,7 @@ const CashierPOS = () => {
                 whiteSpace: 'nowrap',
                 fontWeight: 700,
                 background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                color: '#0f172a',
+                color: '#ffffff',
                 border: 'none',
                 cursor: 'pointer',
                 display: 'flex',
@@ -277,6 +279,60 @@ const CashierPOS = () => {
             >
               <Barcode size={18} />
               <span>Scan Barcode (F2)</span>
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  const res = await client.get('/invoices');
+                  const list = Array.isArray(res.data) ? res.data : (res.data?.invoices || []);
+                  const inv = list.find(i => i.invoice_no === '1384') || list[0] || {
+                    invoice_no: '1384',
+                    customer_name: 'Mah gondia sitaram chauraswya',
+                    customer_phone: '7719975175',
+                    company_name: 'VELAVAN CRACKERS',
+                    subtotal: 27000,
+                    other_charges: 1800,
+                    packaging_charges: 405,
+                    net_total: 29205,
+                    total_cases: 5,
+                    transport_name: 'VRL Logistics',
+                    vehicle_number: 'TN 67 AB 1234',
+                    amount_in_words: 'Twenty Nine Thousand Two Hundred and Five Rupees only',
+                    received_amount: 0,
+                    balance_amount: 29205,
+                    items: [{
+                      product_name: 'Red bijili 100 pcs gold bags',
+                      case_content: 36,
+                      brand: 'Karpagam',
+                      no_of_cases: 5,
+                      quantity: 180,
+                      unit_price: 150,
+                      line_total: 27000
+                    }]
+                  };
+                  setCompletedInvoice(inv);
+                  setShowInvoiceModal(true);
+                } catch (e) {
+                  setShowInvoiceModal(true);
+                }
+              }}
+              style={{
+                padding: '0.65rem 1.15rem',
+                borderRadius: 12,
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                background: '#f8fafc',
+                color: '#0f172a',
+                border: '1px solid #cbd5e1',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem'
+              }}
+              title="Open Velavan Crackers / Estimates Template (PDF 1)"
+            >
+              <Sparkles size={16} color="#eab308" />
+              <span>View Velavan Estimate #1384</span>
             </button>
           </div>
 
@@ -659,6 +715,14 @@ const CashierPOS = () => {
         invoice={completedInvoice}
         items={completedItems}
       />
+
+      {/* Velavan Crackers / Estimates Official Invoice Modal (PDF 1 Layout) */}
+      {showInvoiceModal && completedInvoice && (
+        <InvoiceViewModal
+          invoice={completedInvoice}
+          onClose={() => setShowInvoiceModal(false)}
+        />
+      )}
     </div>
   );
 };

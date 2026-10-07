@@ -31,6 +31,7 @@ import AIInsights from './pages/AIInsights';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import ModelMonitoring from './pages/ModelMonitoring';
+import AIEvaluation from './pages/AIEvaluation';
 
 const App = () => {
   const { user, isLoading } = useAuth();
@@ -73,6 +74,7 @@ const App = () => {
             <Route path="/inventory" element={<ProtectedRoute allowedRoles={['Admin', 'Warehouse Manager', 'WAREHOUSE_MGR', 'BUSINESS_OWNER', 'ADMIN']}><Inventory /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute allowedRoles={['Admin', 'Business Owner', 'Corporate Auditor', 'BUSINESS_OWNER', 'ADMIN']}><Analytics /></ProtectedRoute>} />
             <Route path="/models" element={<ProtectedRoute allowedRoles={['Admin', 'Business Owner', 'ADMIN', 'BUSINESS_OWNER']}><ModelMonitoring /></ProtectedRoute>} />
+            <Route path="/ai-evaluation" element={<ProtectedRoute><AIEvaluation /></ProtectedRoute>} />
             <Route path="/audit-logs" element={<ProtectedRoute allowedRoles={['Admin', 'Corporate Auditor', 'BUSINESS_OWNER', 'ADMIN']}><AuditLog /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute allowedRoles={['Admin', 'Business Owner', 'ADMIN', 'BUSINESS_OWNER']}><Settings /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute allowedRoles={['Admin', 'ADMIN', 'BUSINESS_OWNER']}><Admin /></ProtectedRoute>} />

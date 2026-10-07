@@ -13,33 +13,14 @@ const { seedEnterpriseData } = require('./seedEnterpriseData');
 async function seedERPDatabase() {
   try {
     const Business = require('../models/Business');
+    const { seedSivakasiData } = require('./seedSivakasi');
+
+    // Ensure Sivakasi Cracker Master Catalog and PDF 1 Invoice are seeded
+    await seedSivakasiData(false);
 
     // Default to clean slate brand new mode unless AUTO_SEED is explicitly requested
     if (process.env.AUTO_SEED !== 'true') {
-      console.log('✨ [BRAND NEW MODE] Clean Slate active. Skipping automatic mock transaction seeding.');
-      
-      const adminExists = await StaffUser.findOne({ email: 'admin@smartledger.ai' });
-      if (!adminExists) {
-        await StaffUser.create({
-          username: 'admin1',
-          full_name: 'Admin Director',
-          email: 'admin@smartledger.ai',
-          password_hash: 'Admin@123',
-          role: 'BUSINESS_OWNER',
-          branch_id: 'BR-CENTRAL-01'
-        });
-        console.log('✓ Default Administrator created: admin@smartledger.ai / Admin@123');
-      }
-
-      const bizExists = await Business.findOne();
-      if (!bizExists) {
-        await Business.create({
-          business_name: 'My New Enterprise',
-          legal_name: 'My New Enterprise Trade Co.',
-          gstin: '',
-          is_onboarded: false
-        });
-      }
+      console.log('✨ Sivakasi Master Dataset ready. Skipping legacy mock transaction seeding.');
       return;
     }
 

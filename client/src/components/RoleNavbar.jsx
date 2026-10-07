@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
+import ScreenshotGuideModal from './ScreenshotGuideModal';
 
 const RoleNavbar = ({ onOpenNotifications }) => {
   const { user, logout, switchDemoRole } = useAuth();
@@ -14,6 +15,7 @@ const RoleNavbar = ({ onOpenNotifications }) => {
   const location = useLocation();
 
   const [switching, setSwitching] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   const totalAlerts = stockAlerts.length + riskAlerts.length;
 
@@ -184,6 +186,29 @@ const RoleNavbar = ({ onOpenNotifications }) => {
           )}
         </button>
 
+        {/* 18 Screenshot Pages Guide Hub */}
+        <button
+          onClick={() => setShowGuide(true)}
+          style={{
+            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+            color: '#ffffff',
+            border: 'none',
+            borderRadius: 9999,
+            padding: '0.45rem 0.95rem',
+            fontSize: '0.8rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            boxShadow: '0 4px 12px rgba(37,99,235,0.25)',
+            whiteSpace: 'nowrap'
+          }}
+          title="Open Guide with direct links to all 18 screenshot pages"
+        >
+          <span>📸 18 Screenshot Pages</span>
+        </button>
+
         {/* User Role Tag */}
         <div style={{
           display: 'flex',
@@ -223,6 +248,12 @@ const RoleNavbar = ({ onOpenNotifications }) => {
           <LogOut size={16} />
         </button>
       </div>
+
+      {/* 18 Screenshot Pages Modal */}
+      <ScreenshotGuideModal
+        isOpen={showGuide}
+        onClose={() => setShowGuide(false)}
+      />
     </header>
   );
 };
