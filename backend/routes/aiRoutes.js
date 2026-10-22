@@ -57,4 +57,29 @@ router.get(
   aiProxyController.getModelMetrics
 );
 
+// Advanced AI Command Center & Discount Technology Routes
+router.get(
+  '/command-center/overview',
+  verifyToken,
+  aiProxyController.getCommandCenterOverview
+);
+
+router.get(
+  '/discounts/analysis',
+  verifyToken,
+  aiProxyController.getDiscountAnalysis
+);
+
+router.post(
+  '/discounts/simulate',
+  verifyToken,
+  aiProxyController.simulateDiscount
+);
+
+router.post(
+  '/assistant/query',
+  verifyToken,
+  aiProxyController.askAiAssistant
+);
+
 module.exports = router;

@@ -228,3 +228,71 @@ exports.getModelMetrics = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// 9. Dynamic Pricing & Discount Elasticity Engine
+exports.getDiscountAnalysis = async (req, res) => {
+  try {
+    const analysis = await nativeAiEngine.analyzeDiscountOptimization();
+    res.json(analysis);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 10. Interactive What-If Discount Simulation
+exports.simulateDiscount = async (req, res) => {
+  try {
+    const result = nativeAiEngine.simulateDiscountScenario(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 11. AI Command Center Copilot Query
+exports.askAiAssistant = async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    const result = await nativeAiEngine.askAiCopilot(prompt, req.user);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// 12. Full Command Center Unified Overview
+exports.getCommandCenterOverview = async (req, res) => {
+  try {
+    const Product = require('../models/Product');
+    const Customer = require('../models/Customer');
+    const Invoice = require('../models/Invoice');
+    const AIInsight = require('../models/AIInsight');
+
+    const [products, customers, invoices, insights] = await Promise.all([
+      Product.find().limit(50),
+      Customer.find().limit(50),
+      Invoice.find().sort({ invoice_timestamp: -1 }).limit(20),
+      AIInsight.find({ status: 'ACTIVE' }).sort({ generated_at: -1 })
+    ]);
+
+    const cashflowForecast = await nativeAiEngine.forecastCashFlow([]);
+    const discountAnalysis = await nativeAiEngine.analyzeDiscountOptimization();
+    const inventoryVelocity = await nativeAiEngine.analyzeInventoryVelocity(products);
+    const modelMetrics = nativeAiEngine.getModelMetrics();
+
+    res.json({
+      status: 'success',
+      timestamp: new Date().toISOString(),
+      insights_count: insights.length,
+      insights,
+      cashflowForecast,
+      discountAnalysis,
+      inventoryVelocity,
+      modelMetrics,
+      high_risk_customers_count: customers.filter(c => (c.risk_score || 0) >= 0.6 || (c.overdue_days || 0) > 30).length,
+      active_skus_count: products.length
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
