@@ -13,6 +13,118 @@ import {
   ResponsiveContainer, BarChart, Bar, Legend, Cell
 } from 'recharts';
 
+// Helper to render formatted Markdown in Copilot messages cleanly
+const renderInlineFormatted = (text) => {
+  if (!text) return null;
+  const parts = text.split(/(\*\*.*?\*\*|`.*?`)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} style={{ color: '#0f172a', fontWeight: 800 }}>{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <code key={i} style={{
+          background: '#e2e8f0',
+          color: '#1e293b',
+          padding: '0.1rem 0.35rem',
+          borderRadius: 4,
+          fontFamily: 'monospace',
+          fontSize: '0.82rem',
+          fontWeight: 600
+        }}>
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
+};
+
+const renderFormattedMessage = (content) => {
+  if (!content) return null;
+  const lines = content.split('\n');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={idx} style={{ height: '0.25rem' }} />;
+
+        // Header ###
+        if (trimmed.startsWith('### ')) {
+          return (
+            <h4 key={idx} style={{
+              margin: '0.5rem 0 0.2rem 0',
+              fontSize: '0.98rem',
+              fontWeight: 800,
+              color: '#1e40af',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem'
+            }}>
+              {trimmed.replace('### ', '')}
+            </h4>
+          );
+        }
+
+        // Subheader ####
+        if (trimmed.startsWith('#### ')) {
+          return (
+            <h5 key={idx} style={{
+              margin: '0.35rem 0 0.15rem 0',
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              color: '#0f172a'
+            }}>
+              {trimmed.replace('#### ', '')}
+            </h5>
+          );
+        }
+
+        // Bullet point: - or *
+        if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+          const itemText = trimmed.substring(2);
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', paddingLeft: '0.4rem' }}>
+              <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.9rem', lineHeight: '1.4' }}>•</span>
+              <div style={{ flex: 1, color: '#334155' }}>{renderInlineFormatted(itemText)}</div>
+            </div>
+          );
+        }
+
+        // Numbered item: 1. , 2. , etc.
+        const numMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+        if (numMatch) {
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginTop: '0.3rem' }}>
+              <span style={{
+                background: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
+                borderRadius: '50%',
+                width: 20,
+                height: 20,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                flexShrink: 0,
+                marginTop: 2
+              }}>
+                {numMatch[1]}
+              </span>
+              <div style={{ flex: 1, color: '#1e293b' }}>{renderInlineFormatted(numMatch[2])}</div>
+            </div>
+          );
+        }
+
+        return <div key={idx} style={{ color: '#334155' }}>{renderInlineFormatted(trimmed)}</div>;
+      })}
+    </div>
+  );
+};
+
 const AIInsights = () => {
   const navigate = useNavigate();
 
@@ -1306,25 +1418,75 @@ const AIInsights = () => {
                   key={i}
                   style={{
                     alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                    maxWidth: '85%',
-                    background: msg.sender === 'user' ? '#2563eb' : '#f8fafc',
+                    maxWidth: msg.sender === 'user' ? '75%' : '90%',
+                    background: msg.sender === 'user' ? '#2563eb' : '#ffffff',
                     color: msg.sender === 'user' ? '#ffffff' : '#0f172a',
-                    padding: '0.85rem 1.15rem',
-                    borderRadius: 12,
+                    padding: '0.95rem 1.25rem',
+                    borderRadius: 14,
                     border: msg.sender === 'user' ? 'none' : '1px solid #e2e8f0',
+                    boxShadow: msg.sender === 'user' ? '0 4px 12px rgba(37,99,235,0.2)' : '0 2px 8px rgba(15,23,42,0.04)',
                     fontSize: '0.88rem',
                     lineHeight: '1.55'
                   }}
                 >
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>
-                  <div style={{ fontSize: '0.68rem', marginTop: '0.35rem', textAlign: 'right', opacity: 0.7 }}>
+                  {msg.sender === 'user' ? (
+                    <div style={{ fontWeight: 600 }}>{msg.text}</div>
+                  ) : (
+                    <div>
+                      {renderFormattedMessage(msg.text)}
+                      {msg.metrics && Object.keys(msg.metrics).length > 0 && (
+                        <div style={{
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                          gap: '0.4rem',
+                          marginTop: '0.75rem',
+                          paddingTop: '0.6rem',
+                          borderTop: '1px solid #f1f5f9'
+                        }}>
+                          {Object.entries(msg.metrics).map(([k, v]) => (
+                            <span key={k} style={{
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe',
+                              padding: '0.2rem 0.6rem',
+                              borderRadius: 6,
+                              fontSize: '0.72rem',
+                              fontWeight: 700
+                            }}>
+                              {k}: <strong>{String(v)}</strong>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div style={{
+                    fontSize: '0.68rem',
+                    marginTop: '0.4rem',
+                    textAlign: 'right',
+                    color: msg.sender === 'user' ? '#bfdbfe' : '#94a3b8',
+                    fontWeight: 500
+                  }}>
                     {msg.timestamp}
                   </div>
                 </div>
               ))}
               {copilotLoading && (
-                <div style={{ alignSelf: 'flex-start', background: '#f8fafc', padding: '0.75rem 1rem', borderRadius: 12, border: '1px solid #e2e8f0', fontSize: '0.85rem', color: '#64748b' }}>
-                  Evaluating live ledger entries & generating economic recommendations...
+                <div style={{
+                  alignSelf: 'flex-start',
+                  background: '#ffffff',
+                  padding: '0.85rem 1.15rem',
+                  borderRadius: 12,
+                  border: '1px solid #e2e8f0',
+                  fontSize: '0.85rem',
+                  color: '#2563eb',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                }}>
+                  <FiRefreshCw size={14} className="animate-spin" />
+                  <span>Evaluating live ledger entries & generating economic recommendations...</span>
                 </div>
               )}
             </div>
@@ -1364,10 +1526,11 @@ const AIInsights = () => {
               </h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {[
-                  'What discount should I offer on excess stock?',
+                  'Tell company name',
                   'Simulate 15% festival discount impact on profit',
+                  'Which credit accounts have high default risk?',
                   'Analyze 30-day working capital forecast',
-                  'Which credit accounts have high default risk?'
+                  'Which products are low on stock?'
                 ].map((q, idx) => (
                   <button
                     key={idx}
