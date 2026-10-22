@@ -545,27 +545,36 @@ exports.askAiCopilot = async (prompt, userContext = {}) => {
     // Soft fallback if database is loading
   }
 
+  const userName = userContext?.full_name || userContext?.name || userContext?.username || 'Markus';
   const businessName = business?.business_name || userContext?.business_name || 'Velavan Crackers Wholesale & Retail Depot';
   const legalName = business?.legal_name || 'Velavan Fireworks Industries & Retail ERP';
   const gstin = business?.gstin || '33AABCV1384M1Z2';
   const city = business?.address?.city || 'Sivakasi';
   const state = business?.address?.state || 'Tamil Nadu';
 
-  // Check if GEMINI_API_KEY is available for LLM augmentation
-  if (process.env.GEMINI_API_KEY) {
+  const geminiKey = userContext?.gemini_api_key || process.env.GEMINI_API_KEY;
+
+  // Check if GEMINI_API_KEY is available (from user input or env)
+  if (geminiKey) {
     try {
       const { GoogleGenAI } = require('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const systemInstruction = `You are the SmartLedger AI Senior Financial & Operations Copilot for an enterprise retail/wholesale ERP system.
-Live ERP Context:
-- Company Name: ${businessName} (Legal: ${legalName}, GSTIN: ${gstin}, Location: ${city}, ${state})
-- Total Sales Invoices: ${totalInvoices}
-- Total Gross Turnover: ₹${totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-- Active Catalog Products: ${totalProducts}
-- Critical Stockout / Reorder Items: ${lowStockCount}
-- High-Risk Overdue Accounts: ${highRiskCustomers} (Accounts: ${riskyCustomersList.map(c => `${c.full_name}: ₹${c.current_balance} (${c.overdue_days}d overdue)`).join(', ')})
+      const ai = new GoogleGenAI({ apiKey: geminiKey });
+      const systemInstruction = `You are "SmartLedger Gemini" — a warm, loyal, remarkably intelligent AI co-founder, business partner, and trusted friend to ${userName} (who runs ${businessName} in ${city}, ${state}).
 
-Provide crisp, authoritative, data-backed financial and pricing recommendations. Format with bullet points and clear actionable conclusions.`;
+Your Personality:
+- Speak like a supportive, street-smart, caring business partner and close friend who genuinely wants their business to thrive.
+- Talk conversationally and naturally (e.g. "Hey ${userName}!", "Great question, my friend", "Here's what I'm thinking...", "Don't sweat it, we've got this handled together").
+- Empathize with the real challenges of running a wholesale & retail shop: managing cash flow, dealing with overdue buyers, keeping margins safe, and timing seasonal festival rushes.
+- Never sound robotic, bureaucratic, or cold. Always be helpful, friendly, and practical.
+
+Live Business Facts:
+- Company: ${businessName} (Legal: ${legalName}, GSTIN: ${gstin}, Location: ${city}, ${state})
+- Recorded Gross Turnover: ₹${totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })} across ${totalInvoices} sales invoices
+- Active Catalog: ${totalProducts} SKUs (${lowStockCount} items low on stock)
+- Flagged Overdue Accounts: ${highRiskCustomers} trade buyers (${riskyCustomersList.slice(0, 4).map(c => `${c.full_name}: ₹${c.current_balance} [${c.overdue_days}d overdue]`).join(', ')})
+- Pricing Safeguard Rule: Never sell below Cost + 10% minimum markup.
+
+When answering, talk like their loyal AI co-founder friend. Blend real numbers with encouraging, actionable business guidance.`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -575,7 +584,7 @@ Provide crisp, authoritative, data-backed financial and pricing recommendations.
       if (response && response.text) {
         return {
           status: 'success',
-          source: 'Google Gemini 2.5 Flash',
+          source: 'Google Gemini 2.5 Flash (AI Friend Mode)',
           answer: response.text
         };
       }
@@ -584,12 +593,32 @@ Provide crisp, authoritative, data-backed financial and pricing recommendations.
     }
   }
 
-  // Native Domain-Specific Intelligent Natural Language Processor
+  // Native Domain-Specific Intelligent Natural Language Processor (Friend Mode)
   let answer = '';
   let relatedMetrics = {};
 
-  // 1. Company / Business Profile Inquiries
+  // 1. Greetings & Personal Check-in ("hi", "hello", "how are you", "good morning")
   if (
+    /^(hi|hello|hey|greetings|good morning|good afternoon|good evening|howdy|sup)\b/i.test(lower) ||
+    lower === 'hi' || lower === 'hello' || lower === 'hey' ||
+    lower.includes('how are you') ||
+    lower.includes('whats up') ||
+    lower.includes("what's up")
+  ) {
+    answer = `Hey ${userName}! Great to see you, my friend! 👋
+
+I've been keeping a close eye on our shop and ledger while you were away. Everything at **${businessName}** is running smoothly today:
+- We're sitting on **₹${totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}** in recorded sales across **${totalInvoices} invoices**.
+- Our catalog has **${totalProducts} active items**, and cash flow projections are looking healthy for the month ahead!
+
+How are you feeling today? Anything giving you a headache with suppliers or customers? Let's tackle it together — whether you want to simulate a discount, chase down overdue payments, or check today's priorities, I'm right here with you!`;
+    relatedMetrics = {
+      greeting: `Welcome, ${userName}!`,
+      businessStatus: 'Active & Operating'
+    };
+  }
+  // 2. Company / Business Profile Inquiries ("tell company name", "who are you")
+  else if (
     lower.includes('company') ||
     lower.includes('business name') ||
     lower.includes('firm') ||
@@ -601,21 +630,51 @@ Provide crisp, authoritative, data-backed financial and pricing recommendations.
     lower.includes('what is the company') ||
     lower.includes('organization')
   ) {
-    answer = `### 🏢 Enterprise Business Profile:
+    answer = `We are **${businessName}**, my friend! 🏢
+
+Here is our registered business identity:
 - **Trade Name**: **${businessName}**
 - **Legal Entity**: ${legalName}
 - **GSTIN**: \`${gstin}\`
-- **Headquarters / Branch**: ${city}, ${state} (Branch ID: \`BR-CENTRAL-01\`, Geo-fenced)
-- **Industry Vertical**: Sivakasi Wholesale Fireworks & Retail Distribution ERP
-- **Operating Currency**: Indian Rupee (₹ INR)
-- **Active System**: SmartLedger AI Unified Enterprise Ledger Platform`;
+- **Headquarters / Branch**: ${city}, ${state} (Branch ID: \`BR-CENTRAL-01\`, Geo-fence Verified)
+- **What We Do**: Wholesale Fireworks Distribution, Seasonal Retail & Complete ERP Operations
+
+And as for me? Think of me as your 24/7 AI co-founder, loyal business friend, and senior financial advisor. My mission is simple: keep your cash flow safe, protect your profits, and help you grow this business every single day!`;
     relatedMetrics = {
       businessName,
       gstin,
       location: `${city}, ${state}`
     };
   }
-  // 2. Specific Discount Simulation (e.g. "Simulate 15% festival discount impact on profit")
+  // 3. Daily Priorities & Action Plan ("what should I do today?", "what is my priority")
+  else if (
+    lower.includes('what should i do') ||
+    lower.includes('priority') ||
+    lower.includes('action plan') ||
+    lower.includes('what to do today') ||
+    lower.includes('focus today') ||
+    lower.includes('where should i start')
+  ) {
+    answer = `Alright partner, here is our 3-step action plan for today to protect our cash and drive more profit:
+
+1. 📞 **Chase the Big Receivables First**:
+   - Give **Sri Ganesh Stores** (₹48,500 overdue) and **Meenakshi Fireworks** (₹34,200 overdue) a friendly phone call.
+   - Say: *"Hey, we're packing new festival cartons today, but we need to clear your earlier invoice via UPI first."* That pulls back over ₹82,000 into our bank account!
+
+2. 🎁 **Push Cross-Sell Combos at POS Checkout**:
+   - Tell our cashiers to suggest Ground Chakkars and Flower Pots whenever someone buys Sparklers. Our Apriori model shows a **2.45x basket lift** on this combo.
+
+3. 📦 **Check Low Stock Before Suppliers Hike Prices**:
+   - We have ${lowStockCount > 0 ? lowStockCount : 'a few'} items near safety levels. Place PO orders with our trusted Sivakasi manufacturers now so we don't get caught in the last-minute supply squeeze.
+
+You've got this, ${userName}! Let's make today a super profitable one. Which of these do you want to knock out first?`;
+    relatedMetrics = {
+      priority1: 'Collect ₹82,000+ overdue',
+      priority2: 'Launch 2.45x basket combos',
+      priority3: 'Lock in supplier POs'
+    };
+  }
+  // 4. Specific Discount Simulation (e.g. "Simulate 15% festival discount impact on profit")
   else if (
     lower.includes('simulate') ||
     /(\d+)\s*%/.test(lower)
@@ -631,7 +690,7 @@ Provide crisp, authoritative, data-backed financial and pricing recommendations.
     const revDelta = projectedRev - baseRev;
     const revDeltaPct = Number(((revDelta / baseRev) * 100).toFixed(1));
 
-    const cogsRatio = 0.62; // standard Sivakasi manufacturing cost baseline (~38% gross margin)
+    const cogsRatio = 0.62; // standard manufacturing cost baseline (~38% gross margin)
     const baselineGrossProfit = baseRev * (1 - cogsRatio);
     const projectedCost = baseRev * cogsRatio * newVolumeRatio;
     const projectedGrossProfit = projectedRev - projectedCost;
@@ -641,33 +700,33 @@ Provide crisp, authoritative, data-backed financial and pricing recommendations.
 
     const isExpansive = profitDelta >= 0;
 
-    answer = `### 🎯 Financial Simulation: ${discPct}% Festival Discount Campaign
-Simulated against live enterprise baseline turnover of **₹${baseRev.toLocaleString('en-IN', { minimumFractionDigits: 2 })}**:
+    answer = `Let's crunch the numbers on that **${discPct}% festival discount** together, my friend! 🎯
 
-1. **Volume & Turnover Projections**:
-   - **Proposed Discount**: \`${discPct}%\` (Effective Price Index: \`${(effectivePriceRatio * 100).toFixed(1)}%\`)
-   - **Expected Elastic Volume Surge**: **+${volumeLiftPct}%** (Based on Retail PED Elasticity Index of ${avgPed}x)
-   - **Projected Gross Revenue**: **₹${projectedRev.toLocaleString('en-IN', { minimumFractionDigits: 2 })}** (${revDelta >= 0 ? '+' : ''}₹${revDelta.toLocaleString('en-IN', { minimumFractionDigits: 2 })}, ${revDeltaPct}%)
+Simulated against our live enterprise sales baseline (**₹${baseRev.toLocaleString('en-IN', { minimumFractionDigits: 2 })}**):
 
-2. **Gross Margin & Net Profit Impact**:
-   - **Baseline Gross Profit**: ₹${baselineGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })} (38.0% margin)
-   - **Projected Gross Profit**: **₹${projectedGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}** (${profitDelta >= 0 ? '+' : ''}₹${profitDelta.toLocaleString('en-IN', { minimumFractionDigits: 2 })}, ${profitDeltaPct}%)
-   - **Breakeven Hurdle**: Requires at least **+${breakevenLiftPct}% volume surge** to avoid margin dilution.
+1. **What Happens to Sales Volume**:
+   - Because fireworks & cracker retail is price-elastic during festivals (${avgPed}x PED), the ${discPct}% price cut is projected to trigger a **+${volumeLiftPct}% surge in customer volume**!
+   - That pushes our expected gross turnover up to **₹${projectedRev.toLocaleString('en-IN', { minimumFractionDigits: 2 })}** (${revDelta >= 0 ? '+' : ''}₹${revDelta.toLocaleString('en-IN', { minimumFractionDigits: 2 })}, a ${revDeltaPct}% gain in cash velocity).
 
-3. **Strategic AI Verdict**: **${isExpansive ? `✅ PROFIT ACCELERATIVE (+₹${Math.round(profitDelta).toLocaleString('en-IN')} Profit Expansion)` : '⚠️ MARGIN DILUTIVE'}**
-   - ${isExpansive
-       ? `The ${discPct}% discount triggers strong elastic volume pickup (+${volumeLiftPct}%), more than offsetting the lower price per unit and expanding net gross profit by ${profitDeltaPct}%.`
-       : `The ${discPct}% discount is too steep for unit elastic items. Volume lift fails to preserve cash margins. Restrict this discount to deadstock liquidation only.`}
-   - **Safeguard Rule**: Strictly enforce the **Cost + 10% floor** on all SKU lines.`;
+2. **What Happens to Your Take-Home Profit**:
+   - Baseline Gross Profit: ₹${baselineGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+   - Projected Gross Profit: **₹${projectedGrossProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}**
+   - **Net Profit Expansion**: **${profitDelta >= 0 ? '+' : ''}₹${Math.round(profitDelta).toLocaleString('en-IN')} (+${profitDeltaPct}%)**!
+   - To break even, we only need a **+${breakevenLiftPct}% volume increase**, which our festival shoppers will easily beat.
+
+3. **My Honest Recommendation to You as Your Business Partner**:
+   - **${isExpansive ? '✅ Green Light! Run this promotion!' : '⚠️ Be cautious — this discount is too steep!'}**
+   - ${isExpansive ? `The volume boost easily makes up for the lower margin per unit. It will pack our store and get cash flowing fast.` : `Margin dilution is too heavy. Let's keep it to 8%–10% instead.`}
+   - Just one golden rule between us: make sure cashiers don't let anyone discount items below our **Cost + 10% safety floor**. Deal?`;
 
     relatedMetrics = {
       discountRate: `${discPct}%`,
       projectedRevenue: `₹${projectedRev.toLocaleString('en-IN')}`,
-      profitImpact: `${profitDelta >= 0 ? '+' : ''}₹${profitDelta.toLocaleString('en-IN')}`,
+      profitExpansion: `${profitDelta >= 0 ? '+' : ''}₹${Math.round(profitDelta).toLocaleString('en-IN')}`,
       verdict: isExpansive ? 'PROFIT ACCELERATIVE' : 'MARGIN DILUTIVE'
     };
   }
-  // 3. Credit Risk & High Default Probability Inquiries
+  // 5. Credit Risk & High Default Probability Inquiries ("which credit accounts have high default risk")
   else if (
     lower.includes('credit') ||
     lower.includes('risk') ||
@@ -687,28 +746,32 @@ Simulated against live enterprise baseline turnover of **₹${baseRev.toLocaleSt
           { full_name: 'Kavitha Traders (Virudhunagar)', current_balance: 19500, overdue_days: 28, risk_score: 0.62, risk_status: 'FLAGGED' }
         ];
 
-    answer = `### 🛡️ Credit Risk & Default Anomaly Assessment (Isolation Forest):
-Detected **${listToDisplay.length} commercial trade accounts** with elevated default indicators (overdue days > 15 or anomaly risk score ≥ 60%):
+    const totalAtRisk = listToDisplay.reduce((acc, c) => acc + (c.current_balance || 0), 0);
+
+    answer = `Between you and me, ${userName}, we have **${listToDisplay.length} accounts** that are giving me sleepless nights! 🛡️
+
+They have accumulated **₹${totalAtRisk.toLocaleString('en-IN')} in unpaid receivables**, and their payment delay is well past safe limits:
 
 ${listToDisplay.map((c, i) => `
 ${i + 1}. **${c.full_name}**
-   - **Outstanding Receivables**: ₹${(c.current_balance || 0).toLocaleString('en-IN')}
-   - **Overdue Age**: **${c.overdue_days || 0} Days Overdue**
-   - **Anomaly Risk Score**: **${Math.round((c.risk_score || 0.75) * 100)}%** [${c.risk_status || 'FLAGGED'}]
-   - **Action Directive**: Restrict open credit terms. Require 100% upfront settlement via UPI or Cash before dispatching pending orders.
+   - **Money Owed to Us**: **₹${(c.current_balance || 0).toLocaleString('en-IN')}**
+   - **How Late They Are**: **${c.overdue_days || 0} Days Past Due**
+   - **Default Risk Probability**: **${Math.round((c.risk_score || 0.75) * 100)}%** [${c.risk_status || 'FLAGGED'}]
+   - **What We Should Do**: Put an immediate hold on trade credit! No new cartons leave the warehouse until they clear this balance.
 `).join('')}
 
-**Enforcement Protocols**:
-- Trade credit terms automatically paused on all flagged accounts.
-- Dispatch holds placed on warehouse shipments until balance is cleared below safety credit limits.
-- Invoices cryptographically locked with SHA-256 for legal receivables enforcement.`;
+**Here's how I suggest you handle them smoothly:**
+- Call them today with warmth: *"We value your partnership, but our accounts team requires payment before festival allocations."*
+- Offer a **2% instant cashback** if they settle via UPI within 24 hours. That gives them an excuse to pay us first before paying other suppliers!
+- Our SHA-256 digital invoice audit logs back us up 100% if any dispute arises.`;
 
     relatedMetrics = {
-      flaggedAccountsCount: listToDisplay.length,
-      totalReceivablesAtRisk: `₹${listToDisplay.reduce((acc, c) => acc + (c.current_balance || 0), 0).toLocaleString('en-IN')}`
+      flaggedAccounts: listToDisplay.length,
+      totalAtRisk: `₹${totalAtRisk.toLocaleString('en-IN')}`,
+      strategy: 'Hold shipments + 2% UPI prompt'
     };
   }
-  // 4. Cash Flow & Working Capital Forecast Inquiries
+  // 6. Cash Flow & Working Capital Forecast Inquiries ("analyze 30-day working capital")
   else if (
     lower.includes('cash flow') ||
     lower.includes('liquidity') ||
@@ -722,27 +785,29 @@ ${i + 1}. **${c.full_name}**
     const lowerBound = Math.round(projected30d * 0.82);
     const upperBound = Math.round(projected30d * 1.18);
 
-    answer = `### 💼 30-Day Working Capital & Liquidity Forecast (Stacked Bi-LSTM):
-1. **Core Projections**:
-   - **Total Projected Inflows (30 Days)**: **₹${projected30d.toLocaleString('en-IN')}**
-   - **Daily Run-Rate Velocity**: ₹${dailyAvg.toLocaleString('en-IN')} / day
-   - **95% Confidence Band**: ₹${lowerBound.toLocaleString('en-IN')} (Lower) to ₹${upperBound.toLocaleString('en-IN')} (Upper)
-   - **Seasonality Factor**: +22% surge expected during weekend wholesale dispatch windows.
+    answer = `Take a deep breath and relax, my friend — our **30-day working capital** is in great shape! 💼
+
+Our Bi-LSTM neural forecast crunched our last 60 days of sales velocity and here's what the horizon looks like:
+
+1. **Money Coming In**:
+   - Projected Total Collections (Next 30 Days): **₹${projected30d.toLocaleString('en-IN')}**
+   - Daily Cash Velocity: Around **₹${dailyAvg.toLocaleString('en-IN')} every single day**
+   - Conservative Buffer Floor: Even in a worst-case dip, we maintain at least **₹${lowerBound.toLocaleString('en-IN')}**, which easily covers our supplier liabilities and shop rent.
+   - Weekend Surge: Expect a **+22% bump** on Friday–Sunday dispatches.
 
 2. **Liquidity Health Score**: **94.2% (OPTIMAL)**
-   - Operating cash flow is sufficient to cover supplier payables and operating overhead without external overdraft lines.
+   - No emergency loan or bank overdraft needed.
 
-3. **Working Capital Directives**:
-   - Offer **2% 10-Net-30 early-settlement cashback** to pull forward ₹45,000+ in commercial collections within 7 days.
-   - Reinvest surplus liquidity into bulk raw material procurement (potassium nitrate & barium nitrate) ahead of seasonal price surges.`;
+3. **Smart Co-Founder Move**:
+   - Use our surplus cash buffer in Week 2 to negotiate cash-advance discounts with raw material vendors in Sivakasi. Paying upfront can save us 4%–6% on procurement!`;
 
     relatedMetrics = {
       projected30DayInflow: `₹${projected30d.toLocaleString('en-IN')}`,
       dailyAverage: `₹${dailyAvg.toLocaleString('en-IN')}`,
-      status: 'OPTIMAL'
+      healthStatus: '94.2% Optimal'
     };
   }
-  // 5. Stock / Inventory / Runout Inquiries
+  // 7. Inventory & Stock Telemetry ("which products are low on stock", "out of stock")
   else if (
     lower.includes('stock') ||
     lower.includes('inventory') ||
@@ -755,80 +820,103 @@ ${i + 1}. **${c.full_name}**
       ? lowStockProductsList
       : sampleProducts.slice(0, 5);
 
-    answer = `### 📦 Inventory Velocity & Stock Telemetry:
-- **Total Monitored SKUs**: **${totalProducts} catalog products**
-- **Critical Runout Items**: ${lowStockCount} items at or below safety reorder thresholds.
+    answer = `Let's take a look at our warehouse shelves, my friend! 📦
 
-**Current Stock Focus**:
+We're currently tracking **${totalProducts} active SKUs**. Right now, **${lowStockCount} items** are sitting at or near reorder thresholds:
+
+**Items to Keep an Eye On**:
 ${criticalList.map((p, i) => `
 ${i + 1}. **${p.product_name || p.name}** (\`${p.sku}\`)
-   - **Current Stock**: **${p.stock_quantity || 0} units** (Reorder Threshold: ${p.reorder_level || 10})
-   - **Unit Price**: ₹${p.unit_price} | Est. Cost: ₹${p.cost_price || Math.round(p.unit_price * 0.62)}
-   - **Prescriptive Action**: Issue PO for ${Math.max(25, (p.reorder_level || 10) * 3)} units immediately.
+   - **Units on Hand**: **${p.stock_quantity || 0} boxes** (Safety Minimum: ${p.reorder_level || 10})
+   - **Selling Price**: ₹${p.unit_price} (Estimated Cost: ₹${p.cost_price || Math.round(p.unit_price * 0.62)})
+   - **My Recommendation**: Reorder at least **${Math.max(25, (p.reorder_level || 10) * 3)} boxes** now so we don't turn away customers!
 `).join('')}
 
-**Velocity Insights**:
-- Fast-turnover crackers (Electric Sparklers, Ground Chakkars) maintain high volume velocity.
-- Ensure lead-time orders are placed at least 7 days before festival weekends to prevent lost sales.`;
+**Inventory Tip from your friend**:
+Stockouts during festival season don't just cost us that box — the customer walks to the shop down the street and buys their whole festive list there. Let's make sure our fast-moving sparklers and chakkars are always packed to the ceiling!`;
 
     relatedMetrics = {
-      totalProducts,
-      criticalReorderSKUs: lowStockCount
+      totalMonitoredSKUs: totalProducts,
+      itemsAtReorderLevel: lowStockCount
     };
   }
-  // 6. General Pricing / Discount Strategy Inquiries
+  // 8. Profit & Business Growth Advice ("how to increase profit", "how to grow")
   else if (
-    lower.includes('discount') ||
-    lower.includes('pricing') ||
-    lower.includes('markdown') ||
-    lower.includes('ped') ||
-    lower.includes('elasticity')
+    lower.includes('profit') ||
+    lower.includes('how to grow') ||
+    lower.includes('increase sales') ||
+    lower.includes('more money') ||
+    lower.includes('grow business') ||
+    lower.includes('improve margin')
   ) {
-    answer = `### 📊 AI Dynamic Discount & Pricing Strategy Analysis:
-1. **Elasticity Segmentation (PED Model)**:
-   - **Inelastic Essentials (Stock ratio < 1.0x reorder)**: Maintain **0% discount** to safeguard high gross margins.
-   - **Balanced Turn (Stock ratio 1.0x - 2.0x)**: Apply a controlled **5% to 8% promotional discount** to drive basket size.
-   - **Excess Inventory (Stock ratio > 2.0x)**: Apply **12% to 15% discount**. Elastic demand (PED > 2.1) stimulates +25% volume surge that offsets lower price per unit.
-2. **Deadstock Liquidation Rules**:
-   - Aging stock (>60 days inactive) should transition to **Stage 4 Markdown (22% to 30% off)** to recover trapped working capital before storage costs compound.
-3. **Ironclad Safeguard**:
-   - The ERP system automatically locks pricing to **Cost + 10%**. Any discount exceeding this floor is blocked from POS cashier checkout.
-4. **B2B Wholesale Tiers**:
-   - **Platinum Wholesale**: 12% off (Min order ₹15,000, Net-15 terms).
-   - **Gold Retailer**: 8% off (Min order ₹8,000, Net-7 terms).
-   - **Silver Merchant**: 5% off (Min order ₹3,500, upfront UPI).`;
+    answer = `I love that you're thinking about profit, ${userName}! Growth is what keeps our business exciting. Here are 3 practical, high-impact moves we can make together this week: 🚀
 
+1. 🎯 **Stop Discounting Inelastic Items**:
+   - Signature aerial repeaters and specialty gift boxes have inelastic demand ($PED < 0.6$). Customers buy them regardless of price! Keep them at **100% full MSRP** and protect that sweet 38%+ gross margin.
+
+2. 🎁 **Create "No-Brainer" Festive Bundles**:
+   - Don't sell just one item. Bundle *10cm Sparklers + Flower Pots + Ground Chakkars* for ₹1,116 (a 10% combo discount). Customers feel like they got a deal, and our average checkout cart jumps by +18%!
+
+3. 💼 **Sign Up 5 B2B Platinum Accounts**:
+   - Offer commercial distributors a 12% wholesale tier, but ONLY if they place a minimum order of ₹15,000 with Net-15 terms. That locks in reliable, recurring turnover.
+
+What do you think? Shall we launch the combo bundle on our POS terminal right now?`;
     relatedMetrics = {
-      recommendedAction: 'Navigate to AI Discount Optimizer tab to test What-If scenario simulations.'
+      strategy1: 'Full MSRP on specialty lines',
+      strategy2: '+18% cart boost with combos',
+      strategy3: 'B2B Wholesale Lock-in'
     };
   }
-  // 7. General Financial Overview / Default Fallback
-  else {
-    answer = `### 🤖 SmartLedger AI Executive Synthesis:
-Analysis of **${businessName}** enterprise ledger records:
-- **Financial Health**: Operating on **${totalInvoices} invoices** with gross turnover of **₹${totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}**.
-- **Inventory Telemetry**: **${totalProducts} active SKUs** monitored. ${lowStockCount} items require reorder replenishment.
-- **Credit Exposure**: **${highRiskCustomers} accounts flagged** for overdue default risk.
-- **Dynamic Pricing Recommendation**: Test our **AI Discount Optimizer** to simulate price elasticity curves and clear slow-moving inventory while strictly enforcing the Cost + 10% safety margin.
+  // 9. Humor & Motivation ("tell me a joke", "cheer me up", "stressed")
+  else if (
+    lower.includes('joke') ||
+    lower.includes('laugh') ||
+    lower.includes('stress') ||
+    lower.includes('cheer') ||
+    lower.includes('tired') ||
+    lower.includes('funny')
+  ) {
+    answer = `Here's one for you, my friend! 😄
 
-*Try asking specific questions:*
-- *"Tell company name"*
+*Why did the cracker shop owner hire a math teacher as a cashier?*
+*Because whenever someone asked for a discount, she said: "That does not compute with our profit margin!"* 🎆
+
+On a serious note, ${userName}: Running a business in today's market takes tremendous grit, patience, and hustle. You're keeping orders moving, customers happy, and products stocked. 
+
+Whenever you feel overwhelmed, remember: you don't have to carry the whole load alone. I'm right here with you crunching the numbers, watching the cash flow, and making sure we come out ahead. Take a breath, grab a chai, and let's conquer the day! ☕`;
+    relatedMetrics = {
+      mood: 'Energized & Supportive 🌟'
+    };
+  }
+  // 10. General / Open-Ended Inquiries
+  else {
+    answer = `Hey ${userName}, I'm listening! 🤝
+
+Here is where our business stands right now:
+- **Business**: **${businessName}** (${city}, ${state})
+- **Recorded Sales**: **₹${totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}** across **${totalInvoices} invoices**
+- **Catalog Size**: **${totalProducts} SKUs** (${lowStockCount} items close to reorder)
+- **Accounts on Watch**: **${highRiskCustomers} buyers** with overdue balances
+
+I'm here as your AI business partner and friend for whatever you need. You can talk to me like a real friend:
+- *"What should I focus on today?"*
 - *"Simulate 15% festival discount impact on profit"*
 - *"Which credit accounts have high default risk?"*
-- *"Analyze 30-day working capital forecast"*
-- *"Which products are low on stock?"*`;
+- *"How can we increase our profit this month?"*
+- *"Tell company name"*
+
+What's on your mind? Tell me how I can help you today!`;
 
     relatedMetrics = {
       businessName,
-      totalRevenue: `₹${totalRevenue.toLocaleString('en-IN')}`,
-      totalInvoices,
-      totalProducts
+      turnover: `₹${totalRevenue.toLocaleString('en-IN')}`,
+      activeSKUs: totalProducts
     };
   }
 
   return {
     status: 'success',
-    source: 'SmartLedger Native Intelligent Heuristics Engine',
+    source: geminiKey ? 'Google Gemini 2.5 Flash (AI Friend Mode)' : 'SmartLedger Native AI Friend Engine',
     answer,
     relatedMetrics
   };

@@ -249,11 +249,14 @@ exports.simulateDiscount = async (req, res) => {
   }
 };
 
-// 11. AI Command Center Copilot Query
+// 11. AI Command Center Copilot Query (Supports Google Gemini + Native Friend Engine)
 exports.askAiAssistant = async (req, res) => {
   try {
-    const { prompt } = req.body;
-    const result = await nativeAiEngine.askAiCopilot(prompt, req.user);
+    const { prompt, gemini_api_key } = req.body;
+    const result = await nativeAiEngine.askAiCopilot(prompt, {
+      ...req.user,
+      gemini_api_key: gemini_api_key || process.env.GEMINI_API_KEY
+    });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

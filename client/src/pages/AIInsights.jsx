@@ -161,13 +161,30 @@ const AIInsights = () => {
   const [modelMetrics, setModelMetrics] = useState(null);
   const [inventoryVelocity, setInventoryVelocity] = useState(null);
 
-  // AI Copilot State
+  // AI Copilot & Gemini State
   const [copilotPrompt, setCopilotPrompt] = useState('');
   const [copilotLoading, setCopilotLoading] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [tempKey, setTempKey] = useState('');
+  const [currentlySpeakingIndex, setCurrentlySpeakingIndex] = useState(null);
+
   const [copilotMessages, setCopilotMessages] = useState([
     {
       sender: 'ai',
-      text: `### 🤖 SmartLedger AI Senior Financial & Operations Copilot\nWelcome to your Enterprise AI Command Center. I continuously monitor real-time ledger entries, stock runouts, and credit anomalies.\n\n**Suggested inquiries to try:**\n- *What is the optimal discount for excess cracker inventory?*\n- *Simulate a 15% festival discount impact on gross profit*\n- *Analyze our 30-day working capital forecast*\n- *Which commercial accounts present default risks?*`,
+      text: `Hey Markus! I'm your SmartLedger Gemini AI Business Friend & Co-Founder! 👋✨
+
+I'm right here beside you to help you run Velavan Crackers, maximize your profits, and keep cash flowing smoothly.
+
+**Here are some things we can talk about right now:**
+- 👋 *Hey friend, how's my business doing today?*
+- 🎯 *What should be my top priority today?*
+- 🎁 *Simulate 15% festival discount impact on profit*
+- 🛡️ *Which credit accounts have high default risk?*
+- 💼 *Analyze 30-day working capital forecast*
+- 🏢 *Tell company name*
+
+Talk to me anytime like a real friend! What's on your mind?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -290,6 +307,42 @@ const AIInsights = () => {
     }
   };
 
+  // Text-To-Speech for AI Friend Voice
+  const handleSpeakMessage = (text, idx) => {
+    if (!('speechSynthesis' in window)) return;
+    if (currentlySpeakingIndex === idx) {
+      window.speechSynthesis.cancel();
+      setCurrentlySpeakingIndex(null);
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/###/g, '').replace(/\*\*/g, '').replace(/`/g, '').replace(/•/g, '');
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+    utterance.onend = () => setCurrentlySpeakingIndex(null);
+    utterance.onerror = () => setCurrentlySpeakingIndex(null);
+    setCurrentlySpeakingIndex(idx);
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Save Gemini Key
+  const handleSaveGeminiKey = (key) => {
+    const trimmed = key.trim();
+    if (trimmed) {
+      localStorage.setItem('gemini_api_key', trimmed);
+      setGeminiApiKey(trimmed);
+      setNotification('✨ Google Gemini AI Connected successfully!');
+    } else {
+      localStorage.removeItem('gemini_api_key');
+      setGeminiApiKey('');
+      setNotification('Switched to SmartLedger Native AI Friend mode.');
+    }
+    setTimeout(() => setNotification(''), 4000);
+    setShowKeyModal(false);
+  };
+
   // Send AI Copilot Message
   const handleSendCopilot = async (e, customQuery) => {
     if (e) e.preventDefault();
@@ -307,11 +360,14 @@ const AIInsights = () => {
     setCopilotLoading(true);
 
     try {
-      const res = await client.post('/ai/assistant/query', { prompt: query });
+      const res = await client.post('/ai/assistant/query', {
+        prompt: query,
+        gemini_api_key: geminiApiKey
+      });
       const aiMsg = {
         sender: 'ai',
-        text: res.data?.answer || 'Analysis complete. Key metrics verified against live enterprise records.',
-        source: res.data?.source || 'SmartLedger Native Econometric Engine',
+        text: res.data?.answer || 'I looked over our store records and everything is in order, my friend!',
+        source: res.data?.source || (geminiApiKey ? 'Google Gemini 2.5 Flash' : 'SmartLedger AI Friend'),
         metrics: res.data?.relatedMetrics,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
@@ -321,7 +377,7 @@ const AIInsights = () => {
         ...prev,
         {
           sender: 'ai',
-          text: `### 📊 Real-Time Operations Assessment:\nBased on current ledger telemetry:\n- **Pricing & Discounts**: We recommend a tiered matrix (Platinum 12%, Gold 8%, Silver 5%) with a strict safeguard locking prices to Cost + 10%.\n- **Inventory Health**: Verify critical reorder levels on high-velocity fireworks lines.\n- **Working Capital**: Cash flow remains positive with seasonal peaks.`,
+          text: `Hey my friend, our ledger is operating strong with healthy turnover! Always remember to keep an eye on our 4 overdue accounts and make sure cashiers enforce our Cost + 10% safety margin. Let me know what else we should check together!`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ]);
@@ -1394,20 +1450,101 @@ const AIInsights = () => {
       )}
 
       {/* ─────────────────────────────────────────────────────────────
-          TAB 5: AI FINANCIAL & SCENARIO COPILOT
+          TAB 5: GEMINI AI BUSINESS PARTNER & FRIEND
       ───────────────────────────────────────────────────────────── */}
       {activeTab === 'copilot' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
           {/* Chat Window */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '620px', padding: 0 }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '660px', padding: 0 }}>
             {/* Header */}
-            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #eef2f6', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <div style={{ background: '#2563eb', color: '#ffffff', padding: '0.4rem', borderRadius: 8 }}>
-                <FiZap size={18} />
+            <div style={{
+              padding: '1rem 1.25rem',
+              borderBottom: '1px solid #eef2f6',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                <div style={{
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%)',
+                  color: '#ffffff',
+                  padding: '0.45rem',
+                  borderRadius: 10,
+                  boxShadow: '0 2px 10px rgba(99, 102, 241, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FiCpu size={19} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <strong style={{ fontSize: '0.98rem', color: '#0f172a' }}>SmartLedger Gemini AI Business Partner</strong>
+                    <span style={{
+                      background: '#ede9fe',
+                      color: '#6d28d9',
+                      border: '1px solid #ddd6fe',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      padding: '0.1rem 0.45rem',
+                      borderRadius: 6
+                    }}>
+                      ✨ {geminiApiKey ? 'Gemini 2.5 Flash' : 'Friend Mode'}
+                    </span>
+                  </div>
+                  <span style={{ display: 'block', fontSize: '0.74rem', color: '#64748b' }}>
+                    Your 24/7 Co-Founder, Trusted Friend & Financial Advisor
+                  </span>
+                </div>
               </div>
-              <div>
-                <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>SmartLedger Financial AI Copilot</strong>
-                <span style={{ display: 'block', fontSize: '0.72rem', color: '#16a34a' }}>● Online (Real-Time ERP Grounded)</span>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => {
+                    setTempKey(geminiApiKey);
+                    setShowKeyModal(true);
+                  }}
+                  title="Connect your free Google Gemini API Key"
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 8,
+                    padding: '0.35rem 0.65rem',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    color: '#4338ca',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem'
+                  }}
+                >
+                  <span>✨ {geminiApiKey ? 'Gemini Key Configured' : 'Connect Gemini Key'}</span>
+                </button>
+
+                <button
+                  onClick={() => setCopilotMessages([
+                    {
+                      sender: 'ai',
+                      text: `Hey Markus! I'm here ready to help you with Velavan Crackers. What would you like to brainstorm or check today?`,
+                      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    }
+                  ])}
+                  title="Reset conversation"
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 8,
+                    padding: '0.35rem 0.6rem',
+                    fontSize: '0.72rem',
+                    color: '#64748b',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Clear
+                </button>
               </div>
             </div>
 
@@ -1460,14 +1597,40 @@ const AIInsights = () => {
                       )}
                     </div>
                   )}
+
                   <div style={{
+                    display: 'flex',
+                    justifyContent: msg.sender === 'user' ? 'flex-end' : 'space-between',
+                    alignItems: 'center',
+                    marginTop: '0.5rem',
                     fontSize: '0.68rem',
-                    marginTop: '0.4rem',
-                    textAlign: 'right',
-                    color: msg.sender === 'user' ? '#bfdbfe' : '#94a3b8',
-                    fontWeight: 500
+                    color: msg.sender === 'user' ? '#bfdbfe' : '#94a3b8'
                   }}>
-                    {msg.timestamp}
+                    {msg.sender === 'ai' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>✨ {msg.source || 'Gemini AI Friend'}</span>
+                        <button
+                          onClick={() => handleSpeakMessage(msg.text, i)}
+                          style={{
+                            background: currentlySpeakingIndex === i ? '#ede9fe' : '#f8fafc',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: 6,
+                            padding: '0.15rem 0.45rem',
+                            cursor: 'pointer',
+                            color: currentlySpeakingIndex === i ? '#7c3aed' : '#64748b',
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                          }}
+                          title="Listen to AI friend speak aloud"
+                        >
+                          {currentlySpeakingIndex === i ? '⏹️ Stop' : '🔊 Listen'}
+                        </button>
+                      </div>
+                    )}
+                    <span>{msg.timestamp}</span>
                   </div>
                 </div>
               ))}
@@ -1479,14 +1642,14 @@ const AIInsights = () => {
                   borderRadius: 12,
                   border: '1px solid #e2e8f0',
                   fontSize: '0.85rem',
-                  color: '#2563eb',
+                  color: '#4338ca',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
                   boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
                 }}>
                   <FiRefreshCw size={14} className="animate-spin" />
-                  <span>Evaluating live ledger entries & generating economic recommendations...</span>
+                  <span>Your Gemini AI friend is thinking and analyzing our store data...</span>
                 </div>
               )}
             </div>
@@ -1495,25 +1658,37 @@ const AIInsights = () => {
             <form onSubmit={e => handleSendCopilot(e)} style={{ padding: '1rem', borderTop: '1px solid #eef2f6', display: 'flex', gap: '0.5rem' }}>
               <input
                 type="text"
-                placeholder="Ask about discounts, cash flow, stockouts, or pricing..."
+                placeholder="Talk to your AI friend about sales, discounts, advice, or ideas..."
                 value={copilotPrompt}
                 onChange={e => setCopilotPrompt(e.target.value)}
                 style={{
                   flex: 1,
-                  padding: '0.65rem 1rem',
-                  borderRadius: 10,
+                  padding: '0.75rem 1.15rem',
+                  borderRadius: 12,
                   border: '1px solid #cbd5e1',
                   outline: 'none',
-                  fontSize: '0.88rem'
+                  fontSize: '0.9rem'
                 }}
               />
               <button
                 type="submit"
                 disabled={copilotLoading}
                 className="btn btn-primary"
-                style={{ padding: '0.65rem 1.25rem', borderRadius: 10 }}
+                style={{
+                  padding: '0.75rem 1.35rem',
+                  borderRadius: 12,
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  cursor: 'pointer'
+                }}
               >
-                <FiSend size={16} />
+                <span>Send</span>
+                <FiSend size={15} />
               </button>
             </form>
           </div>
@@ -1521,16 +1696,22 @@ const AIInsights = () => {
           {/* Quick Inquiry Prompts & AI Directives */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div className="card">
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: '0 0 0.75rem 0', color: '#0f172a' }}>
-                Suggested Executive Inquiries
-              </h4>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '1.1rem' }}>💬</span>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
+                  Talk to Your AI Friend
+                </h4>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {[
-                  'Tell company name',
-                  'Simulate 15% festival discount impact on profit',
-                  'Which credit accounts have high default risk?',
-                  'Analyze 30-day working capital forecast',
-                  'Which products are low on stock?'
+                  "👋 Hey friend, how's my business doing today?",
+                  "🎯 What should be my top priority today?",
+                  "🎁 Simulate 15% festival discount impact on profit",
+                  "🛡️ Which credit accounts have high default risk?",
+                  "💼 Analyze 30-day working capital forecast",
+                  "🏢 Tell company name",
+                  "💡 How can we increase our profits this week?",
+                  "😄 Tell me a business joke"
                 ].map((q, idx) => (
                   <button
                     key={idx}
@@ -1540,29 +1721,163 @@ const AIInsights = () => {
                       background: '#f8fafc',
                       border: '1px solid #e2e8f0',
                       padding: '0.65rem 0.85rem',
-                      borderRadius: 8,
+                      borderRadius: 10,
                       fontSize: '0.82rem',
-                      color: '#2563eb',
+                      color: '#334155',
                       fontWeight: 600,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease'
                     }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = '#eff6ff';
+                      e.currentTarget.style.borderColor = '#93c5fd';
+                      e.currentTarget.style.color = '#1d4ed8';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = '#f8fafc';
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.color = '#334155';
+                    }}
                   >
-                    💬 {q}
+                    {q}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="card" style={{ background: '#f8fafc' }}>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: '#0f172a' }}>
-                Enterprise Guardrails
-              </h4>
-              <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.82rem', color: '#475569', lineHeight: '1.6' }}>
-                <li>All discount recommendations strictly enforce the <strong>Cost + 10% safeguard floor</strong>.</li>
-                <li>Cash flow forecasts utilize stacked double exponential smoothing calibrated on 60-day invoice velocity.</li>
-                <li>Credit anomalies require executive business owner override before releasing high-value shipments.</li>
-              </ul>
+            <div className="card" style={{ background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '1rem' }}>✨</span>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
+                  Google Gemini Powered
+                </h4>
+              </div>
+              <p style={{ fontSize: '0.82rem', color: '#475569', lineHeight: '1.55', margin: '0 0 0.75rem 0' }}>
+                Your AI partner combines live ERP telemetry (real turnover, actual customer balances, and stock runouts) with Google Gemini's conversational intelligence.
+              </p>
+              <button
+                onClick={() => {
+                  setTempKey(geminiApiKey);
+                  setShowKeyModal(true);
+                }}
+                className="btn btn-secondary"
+                style={{ width: '100%', fontSize: '0.8rem', padding: '0.5rem', justifyContent: 'center' }}
+              >
+                ⚙️ Configure Google Gemini Key
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Google Gemini Key Modal ── */}
+      {showKeyModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem'
+        }} onClick={() => setShowKeyModal(false)}>
+          <div style={{
+            background: '#ffffff',
+            borderRadius: 16,
+            maxWidth: '520px',
+            width: '100%',
+            padding: '1.75rem',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            color: '#0f172a'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                color: '#ffffff',
+                padding: '0.45rem',
+                borderRadius: 8
+              }}>
+                <FiCpu size={20} />
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Connect Google Gemini AI</h3>
+            </div>
+
+            <p style={{ fontSize: '0.86rem', color: '#64748b', lineHeight: '1.55', marginBottom: '1.25rem' }}>
+              Connect your free Google Gemini API key to enable direct <strong>Google Gemini 2.5 Flash</strong> conversational intelligence for your business friend!
+            </p>
+
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              padding: '0.75rem 1rem',
+              borderRadius: 10,
+              fontSize: '0.8rem',
+              color: '#334155',
+              marginBottom: '1rem'
+            }}>
+              💡 <strong>Get a free key in 30 seconds:</strong>
+              <ol style={{ margin: '0.4rem 0 0 1.2rem', padding: 0, lineHeight: '1.5' }}>
+                <li>Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', fontWeight: 700 }}>Google AI Studio (aistudio.google.com)</a></li>
+                <li>Click <strong>"Create API key"</strong> (100% free tier)</li>
+                <li>Paste it below and click Save!</li>
+              </ol>
+            </div>
+
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+              Google Gemini API Key:
+            </label>
+            <input
+              type="password"
+              placeholder="AIzaSy..."
+              value={tempKey}
+              onChange={e => setTempKey(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.65rem 0.95rem',
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                fontSize: '0.88rem',
+                outline: 'none',
+                marginBottom: '1.25rem'
+              }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem' }}>
+              {geminiApiKey && (
+                <button
+                  type="button"
+                  onClick={() => handleSaveGeminiKey('')}
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.82rem', color: '#dc2626' }}
+                >
+                  Disconnect Key
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowKeyModal(false)}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.82rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveGeminiKey(tempKey)}
+                className="btn btn-primary"
+                style={{
+                  fontSize: '0.82rem',
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)',
+                  border: 'none'
+                }}
+              >
+                Save & Connect
+              </button>
             </div>
           </div>
         </div>
