@@ -151,7 +151,7 @@ async function seedSivakasiData(force = false) {
             risk_level: cust.risk_score >= 0.8 ? 'HIGH_RISK' : 'MEDIUM_RISK',
             is_anomaly: true,
             decision_action: cust.risk_score >= 0.8 ? 'RESTRICT_OPEN_CREDIT_REQUIRE_CASH' : 'REQUEST_PARTIAL_PAYMENT',
-            status: 'FLAGGED',
+            status: 'ACTIVE',
             timestamp: new Date()
           });
         }
