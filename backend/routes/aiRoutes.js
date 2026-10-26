@@ -6,35 +6,35 @@ const { verifyToken, authorizeRoles } = require('../middlewares/auth');
 router.post(
   '/forecast/cash-flow',
   verifyToken,
-  authorizeRoles('BUSINESS_OWNER'),
+  authorizeRoles('BUSINESS_OWNER', 'ADMIN', 'Admin', 'Business Owner'),
   aiProxyController.getCashFlowForecast
 );
 
 router.post(
   '/recommend/cross-sell',
   verifyToken,
-  authorizeRoles('CASHIER', 'BUSINESS_OWNER', 'ADMIN', 'Admin', 'Cashier'),
+  authorizeRoles('CASHIER', 'BUSINESS_OWNER', 'ADMIN', 'Admin', 'Cashier', 'Business Owner'),
   aiProxyController.getCrossSellRecommendations
 );
 
 router.get(
   '/risk/stream',
   verifyToken,
-  authorizeRoles('BUSINESS_OWNER'),
+  authorizeRoles('BUSINESS_OWNER', 'ADMIN', 'Admin', 'Business Owner'),
   aiProxyController.getRiskAuditStream
 );
 
 router.post(
   '/risk/score/:customer_id',
   verifyToken,
-  authorizeRoles('BUSINESS_OWNER'),
+  authorizeRoles('BUSINESS_OWNER', 'ADMIN', 'Admin', 'Business Owner'),
   aiProxyController.scoreCreditRisk
 );
 
 router.post(
   '/risk/override',
   verifyToken,
-  authorizeRoles('BUSINESS_OWNER'),
+  authorizeRoles('BUSINESS_OWNER', 'ADMIN', 'Admin', 'Business Owner'),
   aiProxyController.overrideCustomerRisk
 );
 
