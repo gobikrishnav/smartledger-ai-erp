@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   FiGrid, FiTrendingUp, FiFileText, FiShoppingBag,
-  FiPieChart, FiSliders, FiUsers, FiTruck, FiBox, FiShield,
+  FiPieChart, FiUsers, FiTruck, FiBox, FiShield,
   FiSettings, FiChevronRight, FiChevronDown, FiBookOpen,
-  FiCpu, FiBarChart2, FiActivity, FiPackage, FiTag,
-  FiClipboard, FiAlertCircle
+  FiCpu, FiBarChart2, FiAlertCircle
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
@@ -17,8 +16,8 @@ const Sidebar = () => {
 
   const isActive = (path) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path + '/'));
 
-  const userRole = user?.role?.toUpperCase() || '';
-  const isCashier = userRole === 'CASHIER' || userRole === 'CASHIER';
+  const userRole = (user?.role || '').toUpperCase();
+  const isCashier = userRole === 'CASHIER';
   const isWarehouse = userRole === 'WAREHOUSE_MGR' || userRole === 'WAREHOUSE MANAGER';
   const isOwner = userRole === 'BUSINESS_OWNER' || userRole === 'BUSINESS OWNER';
   const isAdmin = userRole === 'ADMIN';
@@ -26,37 +25,32 @@ const Sidebar = () => {
   // Role-Specific Navigation Definitions
   const cashierNav = [
     { path: '/pos', label: 'POS Terminal', icon: FiShoppingBag },
+    { path: '/invoices', label: 'Invoices', icon: FiFileText },
   ];
 
   const warehouseNav = [
-    { path: '/warehouse', label: 'Warehouse Console', icon: FiPackage },
-    { path: '/inventory', label: 'Inventory (GRN)', icon: FiBox },
+    { path: '/inventory', label: 'Inventory (GRN & Stock)', icon: FiBox },
     { path: '/suppliers', label: 'Suppliers', icon: FiTruck },
   ];
 
-  const ownerNav = [
-    { path: '/dashboard', label: 'Executive Dashboard', icon: FiGrid },
-    { path: '/owner', label: 'Owner AI Portal', icon: FiBarChart2 },
-    { path: '/ai-evaluation', label: 'AI Evaluation (Items 12/14/16)', icon: FiCpu },
-    { path: '/analytics', label: 'AI Analytics', icon: FiPieChart },
-    { path: '/reports', label: 'Financial Reports', icon: FiTrendingUp },
-    { path: '/insights', label: 'Predictive Insights', icon: FiCpu },
+  const aiIntelligenceNav = [
+    { path: '/gemini', label: 'Gemini AI Copilot', icon: FiCpu, badge: 'Smart' },
+    { path: '/insights', label: 'AI Insights & Pricing', icon: FiTrendingUp, badge: 'PED' },
+    { path: '/analytics', label: 'Predictive Analytics', icon: FiPieChart },
   ];
 
-  const erpNav = [
+  const erpCoreNav = [
+    { path: '/dashboard', label: 'Executive Dashboard', icon: FiGrid },
     { path: '/invoices', label: 'Invoice Ledger', icon: FiFileText },
     { path: '/ledger', label: 'General Ledger', icon: FiBookOpen },
-    { path: '/tax-engine', label: 'GST Engine', icon: FiSliders },
-    { path: '/clients', label: 'B2B Customers', icon: FiUsers },
+    { path: '/clients', label: 'B2B Customers & Risk', icon: FiUsers },
+    { path: '/inventory', label: 'Inventory & Stock', icon: FiBox },
     { path: '/pos', label: 'POS Terminal', icon: FiShoppingBag },
-    { path: '/inventory', label: 'Inventory', icon: FiBox },
+    { path: '/reports', label: 'Financial Reports', icon: FiBarChart2 },
   ];
 
   const adminNav = [
     { path: '/admin', label: 'User Management', icon: FiShield },
-    { path: '/ai-evaluation', label: 'AI Models Evaluation', icon: FiCpu },
-    { path: '/audit-logs', label: 'Audit Logs', icon: FiActivity },
-    { path: '/models', label: 'AI Models Config', icon: FiTag },
     { path: '/settings', label: 'System Settings', icon: FiSettings },
   ];
 
@@ -77,6 +71,18 @@ const Sidebar = () => {
               <NavLink key={item.path} to={item.path} className={`sl-nav-item ${active ? 'active' : ''}`}>
                 <Icon size={16} />
                 <span style={{ flex: 1 }}>{item.label}</span>
+                {item.badge && !active && (
+                  <span style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 800,
+                    padding: '0.1rem 0.45rem',
+                    borderRadius: 9999,
+                    background: '#eff6ff',
+                    color: '#2563eb'
+                  }}>
+                    {item.badge}
+                  </span>
+                )}
                 {active && <FiChevronRight size={14} style={{ opacity: 0.8 }} />}
               </NavLink>
             );
@@ -104,7 +110,7 @@ const Sidebar = () => {
       `}</style>
 
       {/* Logo Header */}
-      <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0 0.5rem', marginBottom: '2rem', cursor: 'pointer' }}>
+      <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0 0.5rem', marginBottom: '1.75rem', cursor: 'pointer' }}>
         <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)', flexShrink: 0 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2a10 10 0 1 0 10 10" /><path d="M12 12a5 5 0 0 1 5-5" /><circle cx="12" cy="12" r="2" />
@@ -112,56 +118,53 @@ const Sidebar = () => {
         </div>
         <div>
           <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', letterSpacing: '-0.02em', lineHeight: 1.1 }}>SmartLedger AI</div>
-          <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 500 }}>Retail ERP Platform</div>
+          <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>Retail ERP Platform</div>
         </div>
       </div>
 
-      {/* RENDER DYNAMIC NAVIGATION BASED ON STRICT ROLE ISOLATION */}
+      {/* RENDER DYNAMIC NAVIGATION BASED ON USER ROLES */}
       {isCashier && renderNavGroup(cashierNav, 'Cashier Console')}
-      
-      {isWarehouse && renderNavGroup(warehouseNav, 'Warehouse Ops')}
-      
-      {(isOwner || isAdmin) && renderNavGroup(ownerNav, 'Executive')}
-      
-      {(isOwner || isAdmin) && (
-        <div style={{ marginBottom: '1.25rem' }}>
-          <div onClick={() => setErpOpen(!erpOpen)} style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 800, paddingLeft: '0.75rem', marginBottom: '0.65rem', letterSpacing: '0.06em', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Enterprise ERP</span>
-            {erpOpen ? <FiChevronDown size={12} /> : <FiChevronRight size={12} />}
-          </div>
-          {erpOpen && (
-            <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              {erpNav.map(item => (
-                <NavLink key={item.path} to={item.path} className={`sl-nav-item ${isActive(item.path) ? 'active' : ''}`}>
-                  <item.icon size={16} />
-                  <span style={{ flex: 1 }}>{item.label}</span>
-                </NavLink>
-              ))}
-            </nav>
-          )}
-        </div>
-      )}
+      {isWarehouse && renderNavGroup(warehouseNav, 'Warehouse Console')}
 
-      {isAdmin && renderNavGroup(adminNav, 'Administration')}
+      {/* Executive & Operations Nav */}
+      {(isOwner || isAdmin || (!isCashier && !isWarehouse)) && (
+        <>
+          {renderNavGroup(aiIntelligenceNav, 'AI Intelligence')}
+          <div style={{ marginBottom: '1.25rem' }}>
+            <div onClick={() => setErpOpen(!erpOpen)} style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 800, paddingLeft: '0.75rem', marginBottom: '0.65rem', letterSpacing: '0.06em', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>ERP Operations</span>
+              {erpOpen ? <FiChevronDown size={12} /> : <FiChevronRight size={12} />}
+            </div>
+            {erpOpen && (
+              <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                {erpCoreNav.map(item => {
+                  const active = isActive(item.path);
+                  return (
+                    <NavLink key={item.path} to={item.path} className={`sl-nav-item ${active ? 'active' : ''}`}>
+                      <item.icon size={16} />
+                      <span style={{ flex: 1 }}>{item.label}</span>
+                      {active && <FiChevronRight size={14} style={{ opacity: 0.8 }} />}
+                    </NavLink>
+                  );
+                })}
+              </nav>
+            )}
+          </div>
+          {(isAdmin || isOwner) && renderNavGroup(adminNav, 'System')}
+        </>
+      )}
 
       {/* Bottom User Card */}
       <div style={{ marginTop: 'auto', paddingTop: '1.25rem', borderTop: '1px solid #f1f5f9' }}>
-        {(isWarehouse || isAdmin || isOwner) && (
-          <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 12, padding: '0.6rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem', cursor: 'pointer' }} onClick={() => navigate('/inventory')}>
-            <FiAlertCircle size={13} color="#d97706" />
-            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#92400e' }}>7 low-stock alerts</span>
-          </div>
-        )}
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc', border: '1px solid #eef2f6', borderRadius: 14, padding: '0.65rem 0.85rem' }}>
           <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 800, color: '#ffffff', flexShrink: 0 }}>
-            {(user?.name || 'M').charAt(0).toUpperCase()}
+            {(user?.name || user?.full_name || 'M').charAt(0).toUpperCase()}
           </div>
           <div style={{ overflow: 'hidden', flex: 1 }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || 'Staff'}</div>
-            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>{user?.role || 'Authorized User'}</div>
+            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.name || user?.full_name || 'Staff'}</div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>{user?.role || 'Executive'}</div>
           </div>
-          <button onClick={() => { logout(); navigate('/login'); }} title="Logout" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: '#ef4444', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={() => { logout(); navigate('/login'); }} title="Logout" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.25rem', color: '#ef4444', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             ⎋
           </button>
         </div>

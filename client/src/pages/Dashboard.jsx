@@ -532,7 +532,7 @@ const Dashboard = () => {
           { label: 'New Invoice', icon: FiFileText, color: '#10b981', bg: '#ecfdf5', path: '/invoices/new' },
           { label: 'View Reports', icon: FiActivity, color: '#ea580c', bg: '#fff7ed', path: '/reports' },
           { label: 'AI Insights', icon: FiTrendingUp, color: '#0891b2', bg: '#ecfeff', path: '/insights' },
-          { label: 'GST Engine', icon: FiRefreshCw, color: '#d97706', bg: '#fffbeb', path: '/tax-engine' },
+          { label: 'Gemini AI Copilot', icon: FiActivity, color: '#2563eb', bg: '#eff6ff', path: '/gemini' },
         ].map(action => {
           const Icon = action.icon;
           return (

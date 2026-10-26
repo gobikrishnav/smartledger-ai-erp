@@ -7,7 +7,7 @@ const customerSchema = new mongoose.Schema({
   gstin: { type: String, trim: true },
   credit_limit: { type: Number, default: 50000 },
   current_balance: { type: Number, default: 0 },
-  risk_status: { type: String, enum: ['SAFE', 'FLAGGED'], default: 'SAFE' },
+  risk_status: { type: String, enum: ['SAFE', 'FLAGGED', 'NORMAL', 'MEDIUM_RISK', 'HIGH_RISK'], default: 'SAFE' },
   risk_score: { type: Number, default: 15.0 },
   overdue_days: { type: Number, default: 0 },
   avg_ticket_size: { type: Number, default: 15000 },
