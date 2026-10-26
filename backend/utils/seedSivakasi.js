@@ -285,6 +285,10 @@ async function seedSivakasiData(force = false) {
       let invoiceNo = 1400;
       const nowMs = Date.now();
 
+      const invoicesToInsert = [];
+      const itemsToInsert = [];
+      const ledgerToInsert = [];
+
       // ── Spread 350 invoices across 90 days ──
       for (let dayOffset = 89; dayOffset >= 0; dayOffset--) {
         const dateObj = new Date(nowMs - dayOffset * 24 * 60 * 60 * 1000);
@@ -352,8 +356,10 @@ async function seedSivakasiData(force = false) {
           const balance = isPending ? netTotal : 0;
 
           const cryptoHash = generateInvoiceBlockHash({ invoiceNo: invNoStr, netTotal, timestamp: invoiceTimestamp, prevHash: lastHash, branchId: 'SIVAKASI-DEPOT-01' });
+          const invoiceId = new mongoose.Types.ObjectId();
 
-          const invDoc = await Invoice.create({
+          invoicesToInsert.push({
+            _id: invoiceId,
             invoice_no: invNoStr,
             customer_id: customer._id,
             customer_name: customer.full_name,
@@ -387,18 +393,29 @@ async function seedSivakasiData(force = false) {
           });
 
           for (const li of lineItems) {
-            await InvoiceItem.create({ invoice_id: invDoc._id, ...li });
+            itemsToInsert.push({
+              invoice_id: invoiceId,
+              ...li
+            });
           }
 
           // Ledger double-entry
           const ledgerAccount = paymentMethod === 'CREDIT' ? 'Accounts Receivable' : 'Cash and Bank Balances';
-          await LedgerEntry.create([
-            { entry_id: `LED-${invNoStr}-01`, account_name: ledgerAccount, debit: netTotal, credit: 0, running_balance: 500000 + invoiceNo * 1200, transaction_type: 'INVOICE', reference_no: invNoStr, reference_id: invDoc._id, customer_id: customer._id, customer_name: customer.full_name, description: `Invoice ${invNoStr} — ${basket.id} basket`, created_by: 'Velavan Billing Operator', date: invoiceTimestamp },
-            { entry_id: `LED-${invNoStr}-02`, account_name: 'Sales Revenue', debit: 0, credit: subtotal, running_balance: 500000 + invoiceNo * 1200, transaction_type: 'INVOICE', reference_no: invNoStr, reference_id: invDoc._id, customer_id: customer._id, customer_name: customer.full_name, description: `Revenue for invoice ${invNoStr}`, created_by: 'Velavan Billing Operator', date: invoiceTimestamp }
-          ]);
+          ledgerToInsert.push(
+            { entry_id: `LED-${invNoStr}-01`, account_name: ledgerAccount, debit: netTotal, credit: 0, running_balance: 500000 + invoiceNo * 1200, transaction_type: 'INVOICE', reference_no: invNoStr, reference_id: invoiceId, customer_id: customer._id, customer_name: customer.full_name, description: `Invoice ${invNoStr} — ${basket.id} basket`, created_by: 'Velavan Billing Operator', date: invoiceTimestamp },
+            { entry_id: `LED-${invNoStr}-02`, account_name: 'Sales Revenue', debit: 0, credit: subtotal, running_balance: 500000 + invoiceNo * 1200, transaction_type: 'INVOICE', reference_no: invNoStr, reference_id: invoiceId, customer_id: customer._id, customer_name: customer.full_name, description: `Revenue for invoice ${invNoStr}`, created_by: 'Velavan Billing Operator', date: invoiceTimestamp }
+          );
 
           lastHash = cryptoHash;
         }
+      }
+
+      // High-performance batch insert (seconds instead of minutes)
+      console.log(`⚡ Inserting batch of ${invoicesToInsert.length} invoices, ${itemsToInsert.length} items, ${ledgerToInsert.length} ledger entries...`);
+      if (invoicesToInsert.length > 0) {
+        await Invoice.insertMany(invoicesToInsert, { ordered: false });
+        await InvoiceItem.insertMany(itemsToInsert, { ordered: false });
+        await LedgerEntry.insertMany(ledgerToInsert, { ordered: false });
       }
 
       const totalInv = await Invoice.countDocuments();
