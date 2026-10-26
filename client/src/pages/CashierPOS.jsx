@@ -59,16 +59,20 @@ const CashierPOS = () => {
         return;
       }
       try {
-        const cartSkus = cart.map(i => i.sku_barcode);
+        // Send both sku_barcode and product_id so the backend can always match
+        const cartSkus = cart.map(i => i.sku_barcode || i.sku || String(i._id));
         const res = await client.post('/ai/recommend/cross-sell', { cart_items: cartSkus });
-        if (res.data && res.data.recommendations) {
-          setRecommendations(res.data.recommendations);
+        if (res.data && Array.isArray(res.data.recommendations)) {
+          setRecommendations(res.data.recommendations.filter(r => r && r.sku));
         }
       } catch (err) {
-        console.error('Apriori recommendations error:', err);
+        // Silently ignore recommendation errors — they are non-critical
+        console.debug('Apriori recommendations:', err?.response?.data?.error || err.message);
       }
     };
-    fetchCrossSell();
+    // Debounce so we don't hammer the API on every cart keystroke
+    const timer = setTimeout(fetchCrossSell, 600);
+    return () => clearTimeout(timer);
   }, [cart]);
 
   // Keyboard shortcut listener (F2: Open scanner, F4: Complete sale)
@@ -590,30 +594,44 @@ const CashierPOS = () => {
                   <span>AI APRIORI CROSS-SELL PROMPTS (Lift &gt; 1.2):</span>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
-                  {recommendations.slice(0, 3).map(rec => {
-                    const matchedProd = products.find(p => p.sku_barcode === rec.sku);
+                {recommendations.slice(0, 4).map(rec => {
+                    // Match by sku_barcode (primary) or sku field
+                    const matchedProd = products.find(p =>
+                      p.sku_barcode === rec.sku ||
+                      p.sku_barcode === rec.sku_barcode ||
+                      p.sku === rec.sku
+                    );
+                    if (!rec.name && !matchedProd) return null;
+                    const displayName = rec.name || matchedProd?.product_name || 'Item';
+                    const displayPrice = rec.unit_price || matchedProd?.unit_price || 0;
+                    const displayLift = rec.lift || 1.0;
+                    const isAlreadyInCart = cart.some(c => c.sku_barcode === (rec.sku || rec.sku_barcode));
+                    if (isAlreadyInCart) return null;
                     return (
                       <button
-                        key={rec.sku}
+                        key={rec.sku || rec.sku_barcode}
                         onClick={() => matchedProd && addToCart(matchedProd)}
+                        disabled={!matchedProd}
                         style={{
-                          background: '#ffffff',
+                          background: matchedProd ? '#ffffff' : '#f8fafc',
                           border: '1px solid #bfdbfe',
                           borderRadius: 10,
                           padding: '0.45rem 0.65rem',
                           textAlign: 'left',
-                          cursor: 'pointer',
+                          cursor: matchedProd ? 'pointer' : 'default',
                           fontSize: '0.75rem',
                           minWidth: '160px',
-                          flexShrink: 0
+                          flexShrink: 0,
+                          opacity: matchedProd ? 1 : 0.65
                         }}
+                        title={rec.reason || 'Frequently bought together'}
                       >
                         <div style={{ fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          + {rec.name}
+                          + {displayName}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2563eb', fontWeight: 800, marginTop: '0.2rem' }}>
-                          <span>₹{rec.unit_price}</span>
-                          <span style={{ color: '#10b981', fontSize: '0.68rem' }}>{rec.lift}x Lift</span>
+                          <span>₹{displayPrice}</span>
+                          <span style={{ color: '#10b981', fontSize: '0.68rem' }}>{displayLift.toFixed ? displayLift.toFixed(1) : displayLift}x Lift</span>
                         </div>
                       </button>
                     );

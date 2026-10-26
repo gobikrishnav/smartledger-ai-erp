@@ -192,6 +192,25 @@ const Admin = () => {
     downloadAnchor.remove();
   };
 
+  const [reseeding, setReseeding] = useState(false);
+  const [reseedMsg, setReseedMsg] = useState('');
+
+  const handleForceReseed = async (e) => {
+    if (e) buttonPress(e.currentTarget);
+    if (!window.confirm('This will wipe all invoices and regenerate 350+ AI training invoices. Continue?')) return;
+    setReseeding(true);
+    setReseedMsg('');
+    try {
+      const res = await client.post('/admin/force-reseed', {});
+      setReseedMsg(res.data?.message || '✅ Database reseeded successfully!');
+    } catch (err) {
+      setReseedMsg('Error: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setReseeding(false);
+      setTimeout(() => setReseedMsg(''), 6000);
+    }
+  };
+
   const handleOptimizeDb = async (e) => {
     if (e) buttonPress(e.currentTarget);
     setOptimizingDb(true);
@@ -521,7 +540,33 @@ const Admin = () => {
               <FiRefreshCw className={optimizingDb ? 'spin' : ''} />
               {optimizingDb ? 'Optimizing WiredTiger Trees...' : (optSuccess ? '✅ Indices & Memory Flushed' : 'Optimize WiredTiger Indices')}
             </button>
+            <button
+              type="button"
+              onClick={handleForceReseed}
+              disabled={reseeding}
+              className="btn"
+              style={{
+                padding: '0.8rem 1.5rem',
+                background: '#7c3aed',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 'var(--radius-sm, 8px)',
+                fontWeight: 700,
+                cursor: reseeding ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <FiRefreshCw className={reseeding ? 'spin' : ''} />
+              {reseeding ? '⏳ Generating 350+ Invoices & Training Data...' : '🎆 Force Reseed Database (350+ AI Invoices)'}
+            </button>
           </div>
+          {reseedMsg && (
+            <div style={{ marginTop: '1rem', padding: '0.75rem 1.25rem', background: 'rgba(16,185,129,0.15)', border: '1px solid #10b981', borderRadius: '8px', color: '#10b981', fontWeight: 700, fontSize: '0.9rem' }}>
+              {reseedMsg}
+            </div>
+          )}
         </div>
       )}
 

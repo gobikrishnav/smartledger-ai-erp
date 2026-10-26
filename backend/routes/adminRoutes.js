@@ -230,10 +230,49 @@ router.post('/seed-sivakasi', async (req, res) => {
     const result = await seedSivakasiData(req.body.force === true);
     res.json({
       success: true,
-      message: '🎆 SREEVEESATHYA AGENCIES & VELAVAN CRACKERS master catalog loaded successfully!',
+      message: '🎆 VELAVAN CRACKERS master dataset seeded: 40 B2B customers, 186 products, 350+ historical invoices.',
       result
     });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/force-reseed — Wipe invoices and re-generate full training dataset
+router.post('/force-reseed', async (req, res) => {
+  try {
+    const Invoice = require('../models/Invoice');
+    const InvoiceItem = require('../models/InvoiceItem');
+    const LedgerEntry = require('../models/LedgerEntry');
+    const RiskAuditLog = require('../models/RiskAuditLog');
+    const Customer = require('../models/Customer');
+
+    console.log('🔄 Force-reseed triggered — clearing invoices for fresh AI training data...');
+    await Promise.all([
+      Invoice.deleteMany({}),
+      InvoiceItem.deleteMany({}),
+      LedgerEntry.deleteMany({}),
+      RiskAuditLog.deleteMany({})
+    ]);
+
+    // Also reset customer balances so they reflect fresh state
+    await Customer.updateMany({}, { $set: { current_balance: 0, overdue_days: 0, risk_status: 'SAFE', risk_score: 0.12 } });
+
+    const { seedSivakasiData } = require('../utils/seedSivakasi');
+    const result = await seedSivakasiData(false);
+
+    const invoiceCount = await Invoice.countDocuments();
+    const itemCount = await InvoiceItem.countDocuments();
+
+    res.json({
+      success: true,
+      message: `✅ Force-reseed complete! ${invoiceCount} invoices and ${itemCount} invoice line items generated for full AI training.`,
+      invoices_generated: invoiceCount,
+      items_generated: itemCount,
+      result
+    });
+  } catch (err) {
+    console.error('Force-reseed error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

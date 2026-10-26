@@ -13,7 +13,7 @@ router.post(
 router.post(
   '/recommend/cross-sell',
   verifyToken,
-  authorizeRoles('CASHIER', 'BUSINESS_OWNER'),
+  authorizeRoles('CASHIER', 'BUSINESS_OWNER', 'ADMIN', 'Admin', 'Cashier'),
   aiProxyController.getCrossSellRecommendations
 );
 
