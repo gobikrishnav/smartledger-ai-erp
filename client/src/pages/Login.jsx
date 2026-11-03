@@ -7,6 +7,7 @@ import {
   FiClock, FiStar, FiBarChart2
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 
 const DEMO_ROLES = [
   {
@@ -426,6 +427,21 @@ const Login = () => {
               {loading ? 'Authenticating...' : 'Sign In to Workspace →'}
             </button>
           </form>
+
+          {/* Social Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', margin: '1.25rem 0', gap: '0.75rem' }}>
+            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+            <span style={{ fontSize: '0.74rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              or continue with
+            </span>
+            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+          </div>
+
+          {/* Google OAuth 2.0 Sign In */}
+          <GoogleAuthButton
+            role={activeRole === 'owner' ? 'BUSINESS_OWNER' : (activeRole === 'cashier' ? 'CASHIER' : (activeRole === 'warehouse' ? 'WAREHOUSE_MGR' : 'ADMIN'))}
+            text="Sign in with Google"
+          />
 
           <div style={{ marginTop: '1.5rem', textAlign: 'center', fontSize: '0.84rem', color: '#64748b' }}>
             New to SmartLedger AI?{' '}

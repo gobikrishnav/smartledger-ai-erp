@@ -16,6 +16,9 @@ const staffUserSchema = new mongoose.Schema({
     required: true 
   },
   branch_id: { type: String, default: 'BR-CENTRAL-01' },
+  avatar_url: { type: String, default: '' },
+  google_id: { type: String, sparse: true, index: true },
+  auth_provider: { type: String, enum: ['LOCAL', 'GOOGLE'], default: 'LOCAL' },
   created_at: { type: Date, default: Date.now }
 });
 

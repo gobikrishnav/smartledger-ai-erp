@@ -5,6 +5,8 @@ const { verifyToken } = require('../middlewares/auth');
 
 router.post('/register', authController.register);
 router.post('/login', authController.login);
+router.post('/google', authController.googleAuth);
+router.get('/google/config', authController.getGoogleConfig);
 router.get('/profile', verifyToken, authController.getProfile);
 
 module.exports = router;

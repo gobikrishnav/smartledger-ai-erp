@@ -88,6 +88,28 @@ export const AuthProvider = ({ children }) => {
     return response.data;
   };
 
+  const googleLogin = async ({ credential, role = 'BUSINESS_OWNER', profile }) => {
+    const response = await client.post('/auth/google', {
+      credential,
+      role,
+      profile
+    });
+    const { token: newToken, user: userData } = response.data;
+    if (newToken) {
+      localStorage.setItem('smartledger_token', newToken);
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('jwt', newToken);
+      setToken(newToken);
+      setUser({
+        ...userData,
+        userId: userData._id || userData.userId,
+        name: userData.full_name || userData.name,
+        full_name: userData.full_name || userData.name
+      });
+    }
+    return response.data;
+  };
+
   const switchDemoRole = async (targetRole) => {
     const roleCredentials = {
       CASHIER:        { u: 'cashier@smartledger.ai',   p: 'Cashier@123' },
@@ -122,7 +144,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout, switchDemoRole }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, googleLogin, logout, switchDemoRole }}>
       {children}
     </AuthContext.Provider>
   );

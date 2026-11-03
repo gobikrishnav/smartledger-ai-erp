@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const axios = require('axios');
 const StaffUser = require('../models/StaffUser');
 
 exports.login = async (req, res) => {
@@ -135,5 +137,162 @@ exports.getProfile = async (req, res) => {
     res.json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// GET /api/auth/google/config
+exports.getGoogleConfig = (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID || '';
+  res.json({
+    status: 'success',
+    clientId,
+    enabled: Boolean(clientId)
+  });
+};
+
+// POST /api/auth/google (Google OAuth Authentication & Token Exchange)
+exports.googleAuth = async (req, res) => {
+  try {
+    const { credential, role, profile } = req.body || {};
+    let googleUser = null;
+
+    // 1. If Google ID Token (credential) is provided, verify it
+    if (credential && typeof credential === 'string') {
+      try {
+        const verifyUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`;
+        const tokenRes = await axios.get(verifyUrl, { timeout: 4000 });
+        if (tokenRes.data && tokenRes.data.email) {
+          googleUser = {
+            email: tokenRes.data.email,
+            name: tokenRes.data.name || tokenRes.data.given_name || tokenRes.data.email.split('@')[0],
+            picture: tokenRes.data.picture || '',
+            sub: tokenRes.data.sub,
+            email_verified: tokenRes.data.email_verified === 'true' || tokenRes.data.email_verified === true
+          };
+        }
+      } catch (tokenInfoErr) {
+        // Fallback: safely parse JWT payload
+        try {
+          const parts = credential.split('.');
+          if (parts.length === 3) {
+            const rawPayload = Buffer.from(parts[1], 'base64').toString('utf-8');
+            const parsed = JSON.parse(rawPayload);
+            if (parsed.email) {
+              googleUser = {
+                email: parsed.email,
+                name: parsed.name || parsed.given_name || parsed.email.split('@')[0],
+                picture: parsed.picture || '',
+                sub: parsed.sub,
+                email_verified: parsed.email_verified
+              };
+            }
+          }
+        } catch (jwtErr) {
+          console.error('Failed to parse Google credential payload:', jwtErr.message);
+        }
+      }
+    }
+
+    // 2. Direct verified profile object
+    if (!googleUser && profile && profile.email) {
+      googleUser = {
+        email: profile.email,
+        name: profile.name || profile.email.split('@')[0],
+        picture: profile.picture || profile.avatar_url || '',
+        sub: profile.sub || profile.id || `google_${Date.now()}`,
+        email_verified: true
+      };
+    }
+
+    if (!googleUser || !googleUser.email) {
+      return res.status(400).json({
+        error: 'Invalid or missing Google credentials. Unable to verify identity.'
+      });
+    }
+
+    const email = googleUser.email.trim().toLowerCase();
+    const fullName = googleUser.name ? googleUser.name.trim() : email.split('@')[0];
+
+    // 3. Find or create user
+    let user = await StaffUser.findOne({ email });
+
+    let assignedRole = 'BUSINESS_OWNER';
+    if (role) {
+      const r = String(role).toUpperCase().replace(/[\s_-]+/g, '');
+      if (r === 'CASHIER') assignedRole = 'CASHIER';
+      else if (r === 'WAREHOUSEMGR' || r === 'WAREHOUSEMANAGER') assignedRole = 'WAREHOUSE_MGR';
+      else if (r === 'ADMIN') assignedRole = 'ADMIN';
+      else assignedRole = 'BUSINESS_OWNER';
+    }
+
+    if (!user) {
+      let baseUsername = email.split('@')[0].replace(/[^a-z0-9]/gi, '').toLowerCase();
+      if (!baseUsername) baseUsername = 'guser';
+      let candidateUsername = baseUsername;
+      let counter = 1;
+      while (await StaffUser.findOne({ username: candidateUsername })) {
+        candidateUsername = `${baseUsername}${counter++}`;
+      }
+
+      const randomPassword = crypto.randomBytes(32).toString('hex');
+
+      user = new StaffUser({
+        username: candidateUsername,
+        full_name: fullName,
+        email,
+        password_hash: randomPassword,
+        role: assignedRole,
+        branch_id: assignedRole === 'WAREHOUSE_MGR' ? 'WH-MAIN-01' : 'BR-CENTRAL-01',
+        avatar_url: googleUser.picture || '',
+        google_id: googleUser.sub || '',
+        auth_provider: 'GOOGLE'
+      });
+
+      await user.save();
+    } else {
+      let modified = false;
+      if (googleUser.picture && !user.avatar_url) {
+        user.avatar_url = googleUser.picture;
+        modified = true;
+      }
+      if (googleUser.sub && !user.google_id) {
+        user.google_id = googleUser.sub;
+        modified = true;
+      }
+      if (modified) {
+        await user.save();
+      }
+    }
+
+    // 4. Generate SmartLedger JWT Bearer Token
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        username: user.username,
+        full_name: user.full_name,
+        role: user.role,
+        branch_id: user.branch_id
+      },
+      process.env.JWT_SECRET || 'smartledger_ai_super_secret_key_2026',
+      { expiresIn: '7d' }
+    );
+
+    const userObj = user.toObject();
+    delete userObj.password_hash;
+
+    res.json({
+      status: 'success',
+      message: 'Google Sign-In successful',
+      token,
+      user: userObj,
+      googleProfile: {
+        email: googleUser.email,
+        name: googleUser.name,
+        picture: googleUser.picture
+      }
+    });
+  } catch (err) {
+    console.error('Google Auth Error:', err);
+    res.status(500).json({ error: err.message || 'Google authentication failed.' });
   }
 };

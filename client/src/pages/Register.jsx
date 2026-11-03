@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiUser, FiLock, FiMail, FiShield, FiArrowRight } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 
 const Register = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '', role: 'Business Owner' });
@@ -200,6 +201,21 @@ const Register = () => {
             {loading ? 'Creating Account...' : 'Complete Registration →'}
           </button>
         </form>
+
+        {/* Social Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', margin: '1.25rem 0', gap: '0.75rem' }}>
+          <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+          <span style={{ fontSize: '0.74rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            or sign up with
+          </span>
+          <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+        </div>
+
+        {/* Google OAuth 2.0 Sign Up */}
+        <GoogleAuthButton
+          role={formData.role === 'Cashier' ? 'CASHIER' : (formData.role === 'Warehouse Manager' ? 'WAREHOUSE_MGR' : (formData.role === 'Admin' ? 'ADMIN' : 'BUSINESS_OWNER'))}
+          text="Sign up with Google"
+        />
 
         <div style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.85rem', color: '#64748b' }}>
           Already have an account?{' '}
