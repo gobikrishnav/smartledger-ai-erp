@@ -18,15 +18,23 @@ router.get('/', verifyToken, async (req, res) => {
     const customers = await Customer.find(query).sort({ full_name: 1 });
     const enriched = customers.map(c => {
       const obj = c.toObject();
+      const rawScore = c.risk_score !== undefined ? c.risk_score : 0.25;
+      const normalizedScore = rawScore <= 1.0 ? rawScore : rawScore / 100;
+      const score100 = Math.round(normalizedScore * 100);
+
       obj.name = c.full_name;
       obj.businessName = c.full_name;
       obj.phone = c.phone_number;
       obj.phoneNumber = c.phone_number;
-      obj.outstanding_balance = c.current_balance;
-      obj.creditLimit = c.credit_limit;
-      obj.riskScore = c.risk_score || 0.25;
-      obj.status = c.risk_status === 'FLAGGED' ? 'flagged' : 'active';
-      obj.stateCode = (c.gstin && c.gstin.length >= 2) ? c.gstin.substring(0, 2) : '29';
+      obj.outstanding_balance = c.current_balance || 0;
+      obj.creditLimit = c.credit_limit || 500000;
+      obj.riskScore = score100;
+      obj.anomalyScore = Number(normalizedScore.toFixed(3));
+      obj.status = (c.risk_status === 'FLAGGED' || score100 > 40) ? 'flagged' : 'active';
+      obj.avgDelayDays = c.overdue_days || (c.risk_status === 'FLAGGED' ? 32 : 1.5);
+      obj.invoicesCount = c.transaction_frequency || 12;
+      obj.totalBilled = c.avg_ticket_size ? c.avg_ticket_size * (c.transaction_frequency || 10) : (c.credit_limit || 300000);
+      obj.stateCode = (c.gstin && c.gstin.length >= 2) ? c.gstin.substring(0, 2) : (c.address && c.address.includes('Maharashtra') ? '27' : c.address && c.address.includes('Karnataka') ? '29' : '33');
       return obj;
     });
     res.json(enriched);
@@ -41,15 +49,23 @@ router.get('/:id', verifyToken, async (req, res) => {
     const c = await Customer.findById(req.params.id);
     if (!c) return res.status(404).json({ error: 'Customer not found' });
     const obj = c.toObject();
+    const rawScore = c.risk_score !== undefined ? c.risk_score : 0.25;
+    const normalizedScore = rawScore <= 1.0 ? rawScore : rawScore / 100;
+    const score100 = Math.round(normalizedScore * 100);
+
     obj.name = c.full_name;
     obj.businessName = c.full_name;
     obj.phone = c.phone_number;
     obj.phoneNumber = c.phone_number;
-    obj.outstanding_balance = c.current_balance;
-    obj.creditLimit = c.credit_limit;
-    obj.riskScore = c.risk_score || 0.25;
-    obj.status = c.risk_status === 'FLAGGED' ? 'flagged' : 'active';
-    obj.stateCode = (c.gstin && c.gstin.length >= 2) ? c.gstin.substring(0, 2) : '29';
+    obj.outstanding_balance = c.current_balance || 0;
+    obj.creditLimit = c.credit_limit || 500000;
+    obj.riskScore = score100;
+    obj.anomalyScore = Number(normalizedScore.toFixed(3));
+    obj.status = (c.risk_status === 'FLAGGED' || score100 > 40) ? 'flagged' : 'active';
+    obj.avgDelayDays = c.overdue_days || (c.risk_status === 'FLAGGED' ? 32 : 1.5);
+    obj.invoicesCount = c.transaction_frequency || 12;
+    obj.totalBilled = c.avg_ticket_size ? c.avg_ticket_size * (c.transaction_frequency || 10) : (c.credit_limit || 300000);
+    obj.stateCode = (c.gstin && c.gstin.length >= 2) ? c.gstin.substring(0, 2) : (c.address && c.address.includes('Maharashtra') ? '27' : c.address && c.address.includes('Karnataka') ? '29' : '33');
     res.json(obj);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -90,19 +90,21 @@ const CashierPOS = () => {
   // Cart Management
   const addToCart = (product) => {
     setErrorMsg('');
+    const stock = product.stock_quantity !== undefined ? product.stock_quantity : (product.stockQty ?? 99);
+    const prodName = product.product_name || product.productName || 'Item';
     setCart(prev => {
       const existing = prev.find(item => item._id === product._id);
       if (existing) {
-        if (existing.quantity + 1 > product.stock_quantity) {
-          setErrorMsg(`Cannot add more than ${product.stock_quantity} available units.`);
+        if (existing.quantity + 1 > stock) {
+          setErrorMsg(`Cannot add more than ${stock} available units.`);
           return prev;
         }
         return prev.map(item =>
           item._id === product._id ? { ...item, quantity: item.quantity + 1 } : item
         );
       } else {
-        if (product.stock_quantity < 1) {
-          setErrorMsg(`'${product.product_name}' is out of stock!`);
+        if (stock < 1) {
+          setErrorMsg(`'${prodName}' is out of stock!`);
           return prev;
         }
         return [...prev, {
@@ -218,9 +220,10 @@ const CashierPOS = () => {
   const filteredProducts = products.filter(p => {
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
-    return p.product_name.toLowerCase().includes(q) ||
-           p.sku_barcode.toLowerCase().includes(q) ||
-           p.category_id?.category_name?.toLowerCase().includes(q);
+    const name = (p.product_name || p.productName || '').toLowerCase();
+    const sku = (p.sku_barcode || p.sku || '').toLowerCase();
+    const cat = (p.category_id?.category_name || p.category || '').toLowerCase();
+    return name.includes(q) || sku.includes(q) || cat.includes(q);
   });
 
   return (

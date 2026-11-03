@@ -89,7 +89,9 @@ exports.forecastCashFlow = async (historySequence = []) => {
     horizon_days: horizon,
     total_projected_cashflow: totalProjected,
     daily_average_projected: Math.round(totalProjected / horizon),
-    projections
+    projections,
+    forecast: projections,
+    points: projections
   };
 };
 
@@ -270,7 +272,7 @@ exports.analyzeInventoryVelocity = async (productsInput) => {
   const analysis = products.map(p => {
     const sku = p.sku_barcode || p.sku;
     const stock = p.stock_quantity !== undefined ? p.stock_quantity : (p.stockQty || 0);
-    const reorder = p.reorder_level || p.reorderPoint || 25;
+    const reorder = p.reorder_level !== undefined ? p.reorder_level : (p.reorderPoint || 25);
 
     // Calculate actual daily sales burn rate based on real 60-day invoices
     const unitsSold60d = salesMap[sku] || 0;
@@ -282,9 +284,9 @@ exports.analyzeInventoryVelocity = async (productsInput) => {
 
     let velocityStatus = 'OPTIMAL';
     if (stock <= 0) velocityStatus = 'OUT_OF_STOCK';
-    else if (stock <= reorder) velocityStatus = 'CRITICAL_LOW';
-    else if (runoutDays <= 7) velocityStatus = 'REORDER_NOW';
-    else if (stock > reorder * 3.5) velocityStatus = 'EXCESS_INVENTORY';
+    else if (stock <= Math.max(15, reorder)) velocityStatus = 'CRITICAL_LOW';
+    else if (runoutDays <= 12 || stock <= reorder * 1.5) velocityStatus = 'REORDER_NOW';
+    else if (stock > reorder * 4.0 || runoutDays > 90) velocityStatus = 'EXCESS_INVENTORY';
 
     return {
       product_name: p.product_name || p.name,
@@ -333,35 +335,38 @@ exports.analyzeDiscountOptimization = async () => {
       const reorder = p.reorder_level || 10;
       const currentGrossMarginPct = Number((((unitPrice - costPrice) / unitPrice) * 100).toFixed(1));
 
-      // Calculate days in inventory velocity proxy
-      const stockRatio = stock / Math.max(1, reorder);
-      let ped = 1.15; // default unit elastic
-      let elasticityType = 'UNIT_ELASTIC';
-      let markdownStage = 'Stage 1: Regular Full Price';
-      let recDiscountPct = 0;
-      let strategicRationale = 'Maintain base catalog price to protect gross profit margin.';
+      // Calculate inventory velocity & stock saturation
+      const reorderBase = Math.max(15, reorder);
+      const stockRatio = stock / reorderBase;
+      let ped = 1.10;
+      let elasticityType = 'BALANCED_ELASTIC';
+      let markdownStage = 'Stage 2: Selective Volume Push';
+      let recDiscountPct = 5;
+      let strategicRationale = 'Healthy stock balance. A controlled 5% promotional discount stimulates basket size while preserving solid margins.';
 
-      if (stockRatio <= 0.6) {
-        // High demand, scarce stock
+      if (p.no_discount || stockRatio <= 1.2 || stock <= 25) {
+        // High demand, scarce stock or price-controlled brand
         ped = 0.45;
         elasticityType = 'PRICE_INELASTIC';
         markdownStage = 'Stage 1: Premium Inelastic Hold';
         recDiscountPct = 0;
-        strategicRationale = 'Inelastic demand with inventory scarcity. Any discount will directly erode profit without driving meaningful volume.';
-      } else if (stockRatio <= 1.5) {
+        strategicRationale = p.no_discount
+          ? 'Manufacturer price-protected premium SKU. Maintain 0% discount to protect brand value and maximum gross margin.'
+          : 'High seasonal velocity with limited stock buffer. Any discount would cause premature stockout without margin benefit.';
+      } else if (stockRatio <= 3.5 || stock <= 90) {
         // Balanced turnover
-        ped = 1.10;
+        ped = 1.15;
         elasticityType = 'BALANCED_ELASTIC';
         markdownStage = 'Stage 2: Selective Volume Push';
         recDiscountPct = 5;
-        strategicRationale = 'Healthy stock balance. A controlled 5% promotional discount stimulates basket size while preserving solid margins.';
-      } else if (stockRatio <= 3.0) {
+        strategicRationale = 'Optimal inventory turnover. A controlled 5% promotional discount stimulates basket size while preserving solid gross margins.';
+      } else if (stockRatio <= 8.0 || stock <= 200) {
         // Excess inventory accumulation
         ped = 2.10;
         elasticityType = 'HIGHLY_ELASTIC';
         markdownStage = 'Stage 3: Clearance Velocity Push';
         recDiscountPct = 12;
-        strategicRationale = 'Elevated holding inventory. Price-sensitive elastic response: a 12% discount accelerates turnover before storage costs compound.';
+        strategicRationale = 'Elevated holding inventory. Price-sensitive elastic response: a 12% discount accelerates turnover before carrying costs compound.';
       } else {
         // Deadstock risk / high inventory saturation
         ped = 3.25;

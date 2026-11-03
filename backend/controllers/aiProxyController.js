@@ -20,7 +20,8 @@ exports.getCashFlowForecast = async (req, res) => {
       dailyMap[dayKey] = (dailyMap[dayKey] || 0) + (inv.net_total || inv.grandTotal || 0);
     });
 
-    const historySequence = Object.values(dailyMap);
+    const sortedDays = Object.keys(dailyMap).sort();
+    const historySequence = sortedDays.map(k => dailyMap[k]);
 
     // Attempt Python service with quick timeout
     try {
@@ -30,6 +31,7 @@ exports.getCashFlowForecast = async (req, res) => {
 
       return res.json({
         status: 'success',
+        ...response.data,
         data: response.data
       });
     } catch (proxyErr) {
@@ -37,6 +39,7 @@ exports.getCashFlowForecast = async (req, res) => {
       const nativeResult = await nativeAiEngine.forecastCashFlow(historySequence);
       return res.json({
         status: 'success',
+        ...nativeResult,
         data: nativeResult
       });
     }
@@ -45,6 +48,7 @@ exports.getCashFlowForecast = async (req, res) => {
     const fallback = await nativeAiEngine.forecastCashFlow([]);
     res.json({
       status: 'success',
+      ...fallback,
       data: fallback
     });
   }
@@ -53,7 +57,8 @@ exports.getCashFlowForecast = async (req, res) => {
 // 2. Apriori Real-Time Cross-Sell Recommendations for Cashier Cart
 exports.getCrossSellRecommendations = async (req, res) => {
   try {
-    const { cart_items = [] } = req.body;
+    const rawItems = req.body?.cart_items || req.query?.cart_items || [];
+    const cart_items = Array.isArray(rawItems) ? rawItems : (typeof rawItems === 'string' ? rawItems.split(',') : []);
 
     try {
       const response = await axios.post(`${AI_SERVICE_URL}/api/ai/recommend/cross-sell`, {
@@ -264,14 +269,20 @@ exports.simulateDiscount = async (req, res) => {
 // 11. AI Command Center Copilot Query (Supports Google Gemini + Native Friend Engine)
 exports.askAiAssistant = async (req, res) => {
   try {
-    const { prompt, history, model, gemini_api_key } = req.body;
-    const result = await nativeAiEngine.askAiCopilot(prompt, {
+    const { prompt, query, message, history, model, gemini_api_key } = req.body || {};
+    const textPrompt = prompt || query || message || req.query?.prompt || req.query?.query || '';
+    const result = await nativeAiEngine.askAiCopilot(textPrompt, {
       ...req.user,
       history,
       model,
       gemini_api_key: gemini_api_key || process.env.GEMINI_API_KEY
     });
-    res.json(result);
+    res.json({
+      status: 'success',
+      reply: result.answer,
+      response: result.answer,
+      ...result
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

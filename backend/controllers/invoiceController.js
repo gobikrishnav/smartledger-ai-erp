@@ -538,14 +538,27 @@ exports.getProfitSummary = async (req, res) => {
     const grossMarginPercent = totalRevenue > 0 ? ((totalRevenue - totalCOGS) / totalRevenue) * 100 : 0;
 
     // Build category profit breakdown
+    const Product = require('../models/Product');
+    const ProductCategory = require('../models/ProductCategory');
+    const [categories, prods] = await Promise.all([
+      ProductCategory.find().lean(),
+      Product.find().select('sku_barcode category_id').lean()
+    ]);
+    const catNameMap = {};
+    categories.forEach(c => { catNameMap[c._id.toString()] = c.category_name; });
+    const productCatMap = {};
+    prods.forEach(p => {
+      productCatMap[p.sku_barcode] = catNameMap[p.category_id?.toString()] || 'General Fireworks';
+    });
+
     const categoryProfit = {};
     for (const item of items) {
-      const cat = item.category || 'General';
+      const cat = productCatMap[item.sku_barcode] || item.category || 'General Fireworks';
       if (!categoryProfit[cat]) {
         categoryProfit[cat] = { itemsCount: 0, revenue: 0, cost: 0, profit: 0 };
       }
       const itemRev = (item.unit_price || 0) * (item.quantity || 1);
-      const itemCost = (item.cost_price || (item.unit_price * 0.6)) * (item.quantity || 1);
+      const itemCost = (item.cost_price || (item.unit_price * 0.65)) * (item.quantity || 1);
       categoryProfit[cat].itemsCount += (item.quantity || 1);
       categoryProfit[cat].revenue += itemRev;
       categoryProfit[cat].cost += itemCost;

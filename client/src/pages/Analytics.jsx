@@ -556,9 +556,10 @@ const Analytics = () => {
                   </thead>
                   <tbody>
                     {riskData.map((clientObj, idx) => {
-                      const score = clientObj.riskScore ?? clientObj.anomalyScore ?? 25;
+                      const score = clientObj.riskScore ?? (clientObj.anomalyScore ? clientObj.anomalyScore * 100 : 25);
                       const riskLevel = (clientObj.riskLevel || (score > 65 ? 'high' : score > 35 ? 'medium' : 'low')).toLowerCase();
                       const delay = clientObj.paymentDelayVariance ?? (score / 10).toFixed(1);
+                      const anomalyVal = clientObj.anomalyScore !== undefined ? clientObj.anomalyScore : (score > 1 ? score / 100 : score);
                       return (
                         <tr key={clientObj._id || idx} className="table-row-hover" style={{ borderBottom: '1px solid #f1f5f9' }}>
                           <td style={{ padding: '0.95rem 1.25rem', fontWeight: 700, color: '#0f172a' }}>
@@ -571,7 +572,7 @@ const Analytics = () => {
                             {delay} days
                           </td>
                           <td style={{ padding: '0.95rem 1.25rem', fontWeight: 600, color: '#0f172a' }}>
-                            {(Number(clientObj.anomalyScore || score) / 100).toFixed(2)}
+                            {Number(anomalyVal).toFixed(2)}
                           </td>
                           <td style={{ padding: '0.95rem 1.25rem' }}>
                             <span style={{
