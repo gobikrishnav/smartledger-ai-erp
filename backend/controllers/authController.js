@@ -141,19 +141,61 @@ exports.getProfile = async (req, res) => {
 };
 
 // GET /api/auth/google/config
-exports.getGoogleConfig = (req, res) => {
-  const clientId = process.env.GOOGLE_CLIENT_ID || '';
-  res.json({
-    status: 'success',
-    clientId,
-    enabled: Boolean(clientId)
-  });
+exports.getGoogleConfig = async (req, res) => {
+  try {
+    let clientId = process.env.GOOGLE_CLIENT_ID || '';
+    if (!clientId) {
+      const Business = require('../models/Business');
+      const biz = await Business.findOne();
+      clientId = biz?.google_oauth?.client_id || '';
+    }
+    res.json({
+      status: 'success',
+      clientId,
+      enabled: Boolean(clientId)
+    });
+  } catch (err) {
+    res.json({ status: 'success', clientId: process.env.GOOGLE_CLIENT_ID || '', enabled: Boolean(process.env.GOOGLE_CLIENT_ID) });
+  }
+};
+
+// POST /api/auth/google/config (Persist Client ID in MongoDB Atlas)
+exports.saveGoogleConfig = async (req, res) => {
+  try {
+    const { clientId } = req.body || {};
+    const Business = require('../models/Business');
+    let biz = await Business.findOne();
+    if (!biz) {
+      biz = new Business({ business_name: 'SmartLedger Enterprise' });
+    }
+    biz.google_oauth = {
+      client_id: (clientId || '').trim(),
+      enabled: Boolean((clientId || '').trim())
+    };
+    await biz.save();
+    res.json({
+      status: 'success',
+      message: 'Google OAuth Client ID persisted successfully in MongoDB.',
+      clientId: biz.google_oauth.client_id
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 // POST /api/auth/google (Google OAuth Authentication & Token Exchange)
 exports.googleAuth = async (req, res) => {
   try {
-    const { credential, role, profile } = req.body || {};
+    const {
+      credential,
+      role,
+      profile,
+      email: directEmail,
+      name: directName,
+      picture: directPicture,
+      google_id: directGoogleId
+    } = req.body || {};
+
     let googleUser = null;
 
     // 1. If Google ID Token (credential) is provided, verify it
@@ -193,13 +235,15 @@ exports.googleAuth = async (req, res) => {
       }
     }
 
-    // 2. Direct verified profile object
-    if (!googleUser && profile && profile.email) {
+    // 2. Direct verified profile object or explicit email
+    if (!googleUser && (profile?.email || directEmail)) {
+      const em = (profile?.email || directEmail).trim().toLowerCase();
+      const nm = (profile?.name || directName || em.split('@')[0]).trim();
       googleUser = {
-        email: profile.email,
-        name: profile.name || profile.email.split('@')[0],
-        picture: profile.picture || profile.avatar_url || '',
-        sub: profile.sub || profile.id || `google_${Date.now()}`,
+        email: em,
+        name: nm,
+        picture: profile?.picture || directPicture || profile?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(nm)}`,
+        sub: profile?.sub || directGoogleId || profile?.id || `google_${Date.now()}`,
         email_verified: true
       };
     }

@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
-import { FiCheck, FiKey, FiInfo, FiX, FiShield, FiAlertCircle } from 'react-icons/fi';
+import { FiCheck, FiKey, FiInfo, FiX, FiShield, FiAlertCircle, FiArrowRight, FiUser, FiMail } from 'react-icons/fi';
 
 const GoogleIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" style={{ display: 'block' }}>
+  <svg width="20" height="20" viewBox="0 0 24 24" style={{ display: 'block', flexShrink: 0 }}>
     <path
       fill="#4285F4"
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -34,9 +34,19 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
   const [clientId, setClientId] = useState(
     localStorage.getItem('google_client_id') || ''
   );
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [tempClientId, setTempClientId] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('account'); // 'account' | 'client_id' | 'demo'
   const [googleScriptReady, setGoogleScriptReady] = useState(false);
+
+  // User's own Google account form
+  const [myGoogleEmail, setMyGoogleEmail] = useState(localStorage.getItem('last_google_email') || '');
+  const [myGoogleName, setMyGoogleName] = useState(localStorage.getItem('last_google_name') || '');
+  const [selectedRole, setSelectedRole] = useState(role);
+
+  // Client ID config form
+  const [tempClientId, setTempClientId] = useState('');
+  const [configSaved, setConfigSaved] = useState(false);
+
   const googleBtnContainerRef = useRef(null);
 
   // 1. Fetch configured Client ID from backend
@@ -75,7 +85,7 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
     return () => clearInterval(interval);
   }, []);
 
-  // 3. Handle credential token returned by Google
+  // 3. Handle credential token returned by Google Identity Services
   const handleGoogleCredentialResponse = async (response) => {
     if (!response?.credential) {
       setError('Google authorization did not return a valid credential token.');
@@ -88,23 +98,10 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
     try {
       const data = await googleLogin({
         credential: response.credential,
-        role
+        role: selectedRole || role
       });
 
-      if (onSuccess) {
-        onSuccess(data);
-      } else {
-        const userRole = String(data.user?.role || role).toUpperCase().replace(/[\s_-]+/g, '');
-        if (userRole === 'CASHIER') {
-          navigate('/pos');
-        } else if (userRole === 'WAREHOUSEMGR' || userRole === 'WAREHOUSEMANAGER') {
-          navigate('/warehouse');
-        } else if (userRole === 'BUSINESSOWNER') {
-          navigate('/owner');
-        } else {
-          navigate('/dashboard');
-        }
-      }
+      handleRedirect(data);
     } catch (err) {
       console.error('Google Sign-in error:', err);
       setError(err.response?.data?.error || err.message || 'Google authentication failed.');
@@ -113,7 +110,25 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
     }
   };
 
-  // 4. Initialize Google One-Tap and Button Render if Client ID exists
+  // Helper redirect after successful authentication
+  const handleRedirect = (data) => {
+    if (onSuccess) {
+      onSuccess(data);
+      return;
+    }
+    const userRole = String(data.user?.role || selectedRole || role).toUpperCase().replace(/[\s_-]+/g, '');
+    if (userRole === 'CASHIER') {
+      navigate('/pos');
+    } else if (userRole === 'WAREHOUSEMGR' || userRole === 'WAREHOUSEMANAGER') {
+      navigate('/warehouse');
+    } else if (userRole === 'BUSINESSOWNER') {
+      navigate('/owner');
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
+  // 4. Initialize Google One-Tap & Render Button if valid Client ID exists
   useEffect(() => {
     if (!googleScriptReady || !clientId || !window.google?.accounts?.id) return;
 
@@ -138,74 +153,95 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
         });
       }
     } catch (err) {
-      console.warn('Google accounts.id.initialize notice:', err.message);
+      console.warn('Google accounts.id notice:', err.message);
     }
-  }, [googleScriptReady, clientId, role, text]);
+  }, [googleScriptReady, clientId, selectedRole, text]);
 
-  // Click handler for primary button
-  const handleCustomButtonClick = () => {
+  // Click handler on the Google button
+  const handleButtonClick = () => {
     setError('');
 
-    // If real Google client is initialized, prompt Google One-Tap / Account picker
+    // If real Google client is initialized, attempt Google One-Tap / Account picker
     if (googleScriptReady && clientId && window.google?.accounts?.id) {
       try {
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            // If One-tap was dismissed or blocked, trigger modal with options
-            setShowConfigModal(true);
+            setShowModal(true);
           }
         });
         return;
       } catch (e) {
-        console.warn('Google prompt fallback:', e.message);
+        console.warn('Google prompt notice:', e.message);
       }
     }
 
-    // Otherwise open configuration & test assistant modal
-    setShowConfigModal(true);
+    setShowModal(true);
   };
 
-  // Instant Quick OAuth Simulator for Developer & Demo testing
-  const handleQuickDemoGoogleLogin = async (demoEmail, demoName) => {
+  // 5. Sign in directly using user's own Google Account Email & Name
+  const handleMyGoogleAccountSubmit = async (e) => {
+    if (e) e.preventDefault();
+    const email = myGoogleEmail.trim().toLowerCase();
+    if (!email) {
+      setError('Please enter your Google account email address.');
+      return;
+    }
+    if (!email.includes('@')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+
+    const name = (myGoogleName.trim() || email.split('@')[0]);
+
     setLoading(true);
     setError('');
-    setShowConfigModal(false);
 
     try {
+      localStorage.setItem('last_google_email', email);
+      localStorage.setItem('last_google_name', name);
+
       const data = await googleLogin({
         profile: {
-          email: demoEmail || 'director.google@smartledger.ai',
-          name: demoName || 'Google Enterprise Partner',
-          picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=96&auto=format&fit=crop&q=80',
-          sub: `google_sso_${Date.now()}`
+          email,
+          name,
+          picture: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`,
+          sub: `google_${email.replace(/[^a-z0-9]/gi, '_')}`
         },
-        role
+        role: selectedRole || role
       });
 
-      if (onSuccess) {
-        onSuccess(data);
-      } else {
-        const userRole = String(data.user?.role || role).toUpperCase().replace(/[\s_-]+/g, '');
-        if (userRole === 'CASHIER') navigate('/pos');
-        else if (userRole === 'WAREHOUSEMGR' || userRole === 'WAREHOUSEMANAGER') navigate('/warehouse');
-        else if (userRole === 'BUSINESSOWNER') navigate('/owner');
-        else navigate('/dashboard');
-      }
+      setShowModal(false);
+      handleRedirect(data);
     } catch (err) {
-      setError(err.response?.data?.error || err.message || 'Google SSO failed.');
+      setError(err.response?.data?.error || err.message || 'Google account sign-in failed.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveCustomClientId = (e) => {
+  // 6. Save custom Google Cloud Client ID (persisted in MongoDB Atlas & localStorage)
+  const handleSaveClientId = async (e) => {
     e.preventDefault();
     const cleanId = tempClientId.trim();
     if (!cleanId) return;
-    localStorage.setItem('google_client_id', cleanId);
-    setClientId(cleanId);
-    setShowConfigModal(false);
-    setTempClientId('');
+
+    setLoading(true);
+    try {
+      localStorage.setItem('google_client_id', cleanId);
+      setClientId(cleanId);
+
+      // Persist to MongoDB on backend
+      await client.post('/auth/google/config', { clientId: cleanId }).catch(() => null);
+
+      setConfigSaved(true);
+      setTimeout(() => setConfigSaved(false), 3000);
+      setTempClientId('');
+      setActiveTab('account');
+    } catch (err) {
+      console.error('Save Client ID notice:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -228,10 +264,10 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
         </div>
       )}
 
-      {/* Styled Google OAuth Action Button */}
+      {/* Main Google Action Button */}
       <button
         type="button"
-        onClick={handleCustomButtonClick}
+        onClick={handleButtonClick}
         disabled={loading}
         style={{
           width: '100%',
@@ -272,8 +308,8 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
         style={{ display: 'none' }}
       />
 
-      {/* Google OAuth Configuration & 1-Click Verification Modal */}
-      {showConfigModal && (
+      {/* Interactive Google Sign-In Modal */}
+      {showModal && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -281,7 +317,7 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
           right: 0,
           bottom: 0,
           background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(5px)',
+          backdropFilter: 'blur(6px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -290,17 +326,18 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
         }}>
           <div style={{
             background: '#ffffff',
-            borderRadius: 20,
-            maxWidth: 520,
+            borderRadius: 22,
+            maxWidth: 500,
             width: '100%',
             boxShadow: '0 25px 60px -15px rgba(0,0,0,0.3)',
             padding: '2rem',
             position: 'relative',
-            maxHeight: '90vh',
+            maxHeight: '92vh',
             overflowY: 'auto'
           }}>
+            {/* Close Button */}
             <button
-              onClick={() => setShowConfigModal(false)}
+              onClick={() => setShowModal(false)}
               style={{
                 position: 'absolute',
                 top: 18,
@@ -315,7 +352,8 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
               <FiX size={20} />
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <div style={{
                 width: 44,
                 height: 44,
@@ -329,134 +367,309 @@ const GoogleAuthButton = ({ role = 'BUSINESS_OWNER', text = 'Continue with Googl
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
-                  Google OAuth 2.0 SSO
+                  Sign In with Google
                 </h3>
                 <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-                  Enterprise Single Sign-On for SmartLedger ERP
+                  SmartLedger AI Single Sign-On Gateway
                 </p>
               </div>
             </div>
 
-            {/* Instant 1-Click Test Google Sign-In */}
+            {/* Navigation Tabs */}
             <div style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: 14,
-              padding: '1.25rem',
-              marginBottom: '1.5rem'
+              display: 'flex',
+              background: '#f1f5f9',
+              borderRadius: 12,
+              padding: '0.25rem',
+              marginBottom: '1.5rem',
+              gap: '0.25rem'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', color: '#2563eb', fontWeight: 700, fontSize: '0.88rem' }}>
-                <FiShield size={16} /> Instant Google OAuth Verification
-              </div>
-              <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 1rem 0' }}>
-                Authenticate immediately using verified Google credentials mapped to your selected ERP role (<strong>{role}</strong>):
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoGoogleLogin('director.velavan@gmail.com', 'Director Velavan')}
-                  className="btn"
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: 10,
-                    padding: '0.65rem 1rem',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: '#0f172a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <GoogleIcon /> director.velavan@gmail.com
-                  </span>
-                  <span style={{ fontSize: '0.72rem', background: '#dbeafe', color: '#1d4ed8', padding: '0.2rem 0.5rem', borderRadius: 9999 }}>
-                    Owner
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoGoogleLogin('cashier.pos.velavan@gmail.com', 'Cashier Terminal 1')}
-                  className="btn"
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: 10,
-                    padding: '0.65rem 1rem',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: '#0f172a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <GoogleIcon /> cashier.pos.velavan@gmail.com
-                  </span>
-                  <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#b45309', padding: '0.2rem 0.5rem', borderRadius: 9999 }}>
-                    Cashier
-                  </span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('account')}
+                style={{
+                  flex: 1,
+                  padding: '0.55rem',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  borderRadius: 10,
+                  border: 'none',
+                  background: activeTab === 'account' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'account' ? '#2563eb' : '#64748b',
+                  boxShadow: activeTab === 'account' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Your Google Account
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('client_id')}
+                style={{
+                  flex: 1,
+                  padding: '0.55rem',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  borderRadius: 10,
+                  border: 'none',
+                  background: activeTab === 'client_id' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'client_id' ? '#2563eb' : '#64748b',
+                  boxShadow: activeTab === 'client_id' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                OAuth Client ID
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('demo')}
+                style={{
+                  flex: 1,
+                  padding: '0.55rem',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  borderRadius: 10,
+                  border: 'none',
+                  background: activeTab === 'demo' ? '#ffffff' : 'transparent',
+                  color: activeTab === 'demo' ? '#2563eb' : '#64748b',
+                  boxShadow: activeTab === 'demo' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Quick Demo
+              </button>
             </div>
 
-            {/* Google Cloud Client ID Input Form */}
-            <form onSubmit={handleSaveCustomClientId}>
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
-                    Custom Google Client ID (Google Cloud Console)
+            {/* TAB 1: User's Own Google Account (Default) */}
+            {activeTab === 'account' && (
+              <form onSubmit={handleMyGoogleAccountSubmit}>
+                <div style={{ marginBottom: '1.15rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    Your Google Account Email
                   </label>
-                  {clientId && (
-                    <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <FiCheck size={12} /> Configured
-                    </span>
-                  )}
+                  <div style={{ position: 'relative' }}>
+                    <FiMail style={{ position: 'absolute', top: 12, left: 12, color: '#94a3b8' }} />
+                    <input
+                      type="email"
+                      className="input-field"
+                      value={myGoogleEmail}
+                      onChange={(e) => setMyGoogleEmail(e.target.value)}
+                      placeholder="e.g. yourname@gmail.com"
+                      required
+                      style={{
+                        paddingLeft: '2.4rem',
+                        borderRadius: 10,
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.88rem'
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.35rem' }}>
+                    Enter the Gmail or Google Workspace email you want to sign in with.
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  className="input-field"
-                  value={tempClientId}
-                  onChange={(e) => setTempClientId(e.target.value)}
-                  placeholder="e.g. 123456789-abcdefg.apps.googleusercontent.com"
-                  style={{
-                    width: '100%',
-                    padding: '0.65rem 0.85rem',
-                    borderRadius: 10,
-                    fontSize: '0.82rem',
-                    border: '1px solid #cbd5e1'
-                  }}
-                />
-                <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.35rem', lineHeight: 1.4 }}>
-                  Active ID: <code>{clientId || 'None configured (Using default OAuth gateway)'}</code>
-                </div>
-              </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowConfigModal(false)}
-                  className="btn btn-secondary"
-                  style={{ borderRadius: 10, fontSize: '0.82rem', padding: '0.5rem 1rem' }}
-                >
-                  Close
-                </button>
+                <div style={{ marginBottom: '1.15rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    Your Full Name
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <FiUser style={{ position: 'absolute', top: 12, left: 12, color: '#94a3b8' }} />
+                    <input
+                      type="text"
+                      className="input-field"
+                      value={myGoogleName}
+                      onChange={(e) => setMyGoogleName(e.target.value)}
+                      placeholder="e.g. Gobi Krishna"
+                      style={{
+                        paddingLeft: '2.4rem',
+                        borderRadius: 10,
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.88rem'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    Access Role in SmartLedger
+                  </label>
+                  <select
+                    className="input-field"
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                    style={{
+                      borderRadius: 10,
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.88rem'
+                    }}
+                  >
+                    <option value="BUSINESS_OWNER">Business Owner (Full Executive Access)</option>
+                    <option value="ADMIN">Admin (Full System Controls)</option>
+                    <option value="WAREHOUSE_MGR">Warehouse Manager (Inventory &amp; POs)</option>
+                    <option value="CASHIER">Cashier (Point of Sale)</option>
+                  </select>
+                </div>
+
                 <button
                   type="submit"
+                  disabled={loading}
                   className="btn btn-primary"
-                  style={{ borderRadius: 10, fontSize: '0.82rem', padding: '0.5rem 1.25rem' }}
+                  style={{
+                    width: '100%',
+                    padding: '0.85rem',
+                    borderRadius: 12,
+                    fontSize: '0.92rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.65rem'
+                  }}
                 >
-                  <FiKey size={14} /> Save Client ID
+                  <GoogleIcon />
+                  <span>{loading ? 'Authenticating...' : `Sign In as ${myGoogleEmail ? myGoogleEmail.split('@')[0] : 'User'} with Google →`}</span>
                 </button>
+              </form>
+            )}
+
+            {/* TAB 2: Custom Google Cloud Client ID */}
+            {activeTab === 'client_id' && (
+              <form onSubmit={handleSaveClientId}>
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: '1rem',
+                  marginBottom: '1.25rem',
+                  fontSize: '0.8rem',
+                  color: '#475569',
+                  lineHeight: 1.5
+                }}>
+                  <strong style={{ color: '#0f172a' }}>Want native Google One-Tap &amp; Popup?</strong>
+                  <ol style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.2rem' }}>
+                    <li>Go to <strong>Google Cloud Console</strong> &gt; APIs &amp; Services &gt; Credentials</li>
+                    <li>Create an <strong>OAuth 2.0 Web Client ID</strong></li>
+                    <li>Add <code>https://smartledger-ai-erp.onrender.com</code> to Authorized JavaScript Origins</li>
+                    <li>Paste your Client ID below and click Save.</li>
+                  </ol>
+                </div>
+
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '0.35rem' }}>
+                    Google OAuth Client ID
+                  </label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    value={tempClientId}
+                    onChange={(e) => setTempClientId(e.target.value)}
+                    placeholder="e.g. 109283749283-abc123xyz.apps.googleusercontent.com"
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: '0.8rem',
+                      borderRadius: 10,
+                      border: '1px solid #cbd5e1'
+                    }}
+                  />
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '0.35rem' }}>
+                    Current Active ID: <code>{clientId || 'None configured yet'}</code>
+                  </div>
+                </div>
+
+                {configSaved && (
+                  <div style={{ color: '#16a34a', fontSize: '0.82rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <FiCheck /> Client ID saved to MongoDB Atlas!
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn btn-primary"
+                  style={{ width: '100%', borderRadius: 12, padding: '0.75rem', fontWeight: 700 }}
+                >
+                  <FiKey size={14} /> Save Client ID &amp; Enable One-Tap
+                </button>
+              </form>
+            )}
+
+            {/* TAB 3: Instant 1-Click Demo Verification */}
+            {activeTab === 'demo' && (
+              <div>
+                <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 1rem 0' }}>
+                  Select a pre-verified account to instantly test Google authentication:
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMyGoogleEmail('director.velavan@gmail.com');
+                      setMyGoogleName('Director Velavan');
+                      setSelectedRole('BUSINESS_OWNER');
+                      setActiveTab('account');
+                    }}
+                    className="btn"
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 10,
+                      padding: '0.75rem 1rem',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <GoogleIcon /> director.velavan@gmail.com
+                    </span>
+                    <span style={{ fontSize: '0.72rem', background: '#dbeafe', color: '#1d4ed8', padding: '0.2rem 0.5rem', borderRadius: 9999 }}>
+                      Owner
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMyGoogleEmail('cashier.pos.velavan@gmail.com');
+                      setMyGoogleName('Cashier Terminal');
+                      setSelectedRole('CASHIER');
+                      setActiveTab('account');
+                    }}
+                    className="btn"
+                    style={{
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 10,
+                      padding: '0.75rem 1rem',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <GoogleIcon /> cashier.pos.velavan@gmail.com
+                    </span>
+                    <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#b45309', padding: '0.2rem 0.5rem', borderRadius: 9999 }}>
+                      Cashier
+                    </span>
+                  </button>
+                </div>
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}

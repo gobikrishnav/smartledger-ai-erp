@@ -33,6 +33,10 @@ const businessSchema = new mongoose.Schema({
     min_market_basket_lift: { type: Number, default: 1.2 },
     cashflow_runway_warning_months: { type: Number, default: 2 }
   },
+  google_oauth: {
+    client_id: { type: String, default: '' },
+    enabled: { type: Boolean, default: false }
+  },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now }
 });
