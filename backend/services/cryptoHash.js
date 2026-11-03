@@ -48,5 +48,12 @@ function verifyInvoiceHash(invoice) {
 
 module.exports = {
   generateInvoiceBlockHash,
+  generateInvoiceHash: (inv) => generateInvoiceBlockHash({
+    invoiceNo: inv.invoiceNo || inv.invoice_no || `INV-${Date.now()}`,
+    netTotal: inv.netTotal !== undefined ? inv.netTotal : (inv.net_total || 0),
+    timestamp: inv.timestamp || inv.invoice_timestamp || new Date(),
+    prevHash: inv.prevHash || inv.prev_hash || '0000000000000000000000000000000000000000000000000000000000000000',
+    branchId: inv.branchId || inv.branch_id || 'BR-CENTRAL-01'
+  }),
   verifyInvoiceHash
 };

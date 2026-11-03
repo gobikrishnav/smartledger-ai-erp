@@ -99,15 +99,23 @@ router.post('/', verifyToken, async (req, res) => {
     await customer.save();
 
     const obj = customer.toObject();
+    const rawScore = customer.risk_score !== undefined ? customer.risk_score : 0.25;
+    const normalizedScore = rawScore <= 1.0 ? rawScore : rawScore / 100;
+    const score100 = Math.round(normalizedScore * 100);
+
     obj.name = customer.full_name;
     obj.businessName = customer.full_name;
     obj.phone = customer.phone_number;
     obj.phoneNumber = customer.phone_number;
-    obj.outstanding_balance = customer.current_balance;
-    obj.creditLimit = customer.credit_limit;
-    obj.riskScore = customer.risk_score || 0.25;
-    obj.status = 'active';
-    obj.stateCode = (customer.gstin && customer.gstin.length >= 2) ? customer.gstin.substring(0, 2) : '29';
+    obj.outstanding_balance = customer.current_balance || 0;
+    obj.creditLimit = customer.credit_limit || 500000;
+    obj.riskScore = score100;
+    obj.anomalyScore = Number(normalizedScore.toFixed(3));
+    obj.status = (customer.risk_status === 'FLAGGED' || score100 > 40) ? 'flagged' : 'active';
+    obj.avgDelayDays = customer.overdue_days || 0;
+    obj.invoicesCount = customer.transaction_frequency || 1;
+    obj.totalBilled = customer.current_balance || 0;
+    obj.stateCode = (customer.gstin && customer.gstin.length >= 2) ? customer.gstin.substring(0, 2) : '33';
 
     res.status(201).json(obj);
   } catch (err) {
@@ -128,7 +136,27 @@ router.put('/:id', verifyToken, async (req, res) => {
 
     const updated = await Customer.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!updated) return res.status(404).json({ error: 'Customer not found' });
-    res.json(updated);
+
+    const obj = updated.toObject();
+    const rawScore = updated.risk_score !== undefined ? updated.risk_score : 0.25;
+    const normalizedScore = rawScore <= 1.0 ? rawScore : rawScore / 100;
+    const score100 = Math.round(normalizedScore * 100);
+
+    obj.name = updated.full_name;
+    obj.businessName = updated.full_name;
+    obj.phone = updated.phone_number;
+    obj.phoneNumber = updated.phone_number;
+    obj.outstanding_balance = updated.current_balance || 0;
+    obj.creditLimit = updated.credit_limit || 500000;
+    obj.riskScore = score100;
+    obj.anomalyScore = Number(normalizedScore.toFixed(3));
+    obj.status = (updated.risk_status === 'FLAGGED' || score100 > 40) ? 'flagged' : 'active';
+    obj.avgDelayDays = updated.overdue_days || 0;
+    obj.invoicesCount = updated.transaction_frequency || 12;
+    obj.totalBilled = updated.avg_ticket_size ? updated.avg_ticket_size * (updated.transaction_frequency || 10) : (updated.credit_limit || 300000);
+    obj.stateCode = (updated.gstin && updated.gstin.length >= 2) ? updated.gstin.substring(0, 2) : '33';
+
+    res.json(obj);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

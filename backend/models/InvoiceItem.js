@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const invoiceItemSchema = new mongoose.Schema({
   invoice_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice', required: true, index: true },
-  product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-  sku_barcode: { type: String, required: true },
+  product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: false },
+  sku_barcode: { type: String, default: 'MISC-SKU' },
   product_name: { type: String, required: true },
   quantity: { type: Number, required: true, min: 1 },
   unit_price: { type: Number, required: true, min: 0 },

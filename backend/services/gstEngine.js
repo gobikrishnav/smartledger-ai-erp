@@ -89,5 +89,14 @@ function computeGSTLineItem({
 
 module.exports = {
   HSN_RATE_MAP,
-  computeGSTLineItem
+  computeGSTLineItem,
+  calculateLineGst: (amount, rate, originState, destState) => {
+    return computeGSTLineItem({
+      unitPrice: amount,
+      quantity: 1,
+      customGstRate: rate,
+      originStateCode: originState,
+      destStateCode: destState
+    });
+  }
 };

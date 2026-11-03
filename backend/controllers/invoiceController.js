@@ -15,48 +15,21 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 // Number to Indian Words Converter (e.g. 29205 -> Twenty Nine Thousand Two Hundred and Five Rupees only)
 function numberToIndianWords(num) {
-  if (!num || isNaN(num) || num <= 0) return 'Zero Rupees only';
-  const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+  if (num === null || num === undefined || isNaN(num)) return 'Zero Rupees only';
+  num = Math.round(Number(num));
+  if (num === 0) return 'Zero Rupees only';
+  const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+    'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
   const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-  
-  const inWords = (n) => {
-    let str = '';
-    if (n > 19) {
-      str += b[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + a[n % 10] : ' ');
-    } else {
-      str += a[n];
-    }
-    return str;
-  };
-
-  let n = Math.floor(Math.abs(num));
-  let result = '';
-  
-  if (Math.floor(n / 10000000) > 0) {
-    result += inWords(Math.floor(n / 10000000)) + 'Crore ';
-    n %= 10000000;
+  function inWords(n) {
+    if (n < 20) return a[n];
+    if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? ' ' + a[n % 10] : '');
+    if (n < 1000) return a[Math.floor(n / 100)] + ' Hundred' + (n % 100 !== 0 ? ' and ' + inWords(n % 100) : '');
+    if (n < 100000) return inWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 !== 0 ? ' ' + inWords(n % 1000) : '');
+    if (n < 10000000) return inWords(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 !== 0 ? ' ' + inWords(n % 100000) : '');
+    return inWords(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 !== 0 ? ' ' + inWords(n % 10000000) : '');
   }
-  if (Math.floor(n / 100000) > 0) {
-    result += inWords(Math.floor(n / 100000)) + 'Lakh ';
-    n %= 100000;
-  }
-  if (Math.floor(n / 1000) > 0) {
-    result += inWords(Math.floor(n / 1000)) + 'Thousand ';
-    n %= 1000;
-  }
-  if (Math.floor(n / 100000) > 0) {
-    result += inWords(Math.floor(n / 100000)) + 'Lakh ';
-    n %= 100000;
-  }
-  if (Math.floor(n / 100) > 0) {
-    result += inWords(Math.floor(n / 100)) + 'Hundred ';
-    n %= 100;
-  }
-  if (n > 0) {
-    if (result !== '') result += 'and ';
-    result += inWords(n);
-  }
-  return (result.trim() + ' Rupees only').replace(/\s+/g, ' ');
+  return inWords(num).trim() + ' Rupees only';
 }
 
 exports.createInvoice = async (req, res) => {
@@ -284,38 +257,40 @@ exports.createInvoice = async (req, res) => {
       });
       await invoiceItem.save();
 
-      // Decrement product stock
+      // Decrement product stock if product reference exists
       const prod = line.productRef;
-      prod.stock_quantity = Math.max(0, prod.stock_quantity - line.quantity);
-      await prod.save();
+      if (prod) {
+        prod.stock_quantity = Math.max(0, (prod.stock_quantity || 0) - line.quantity);
+        await prod.save();
 
-      // Record inventory transaction
-      try {
-        await InventoryTransaction.create({
-          product_id: prod._id,
-          sku_barcode: prod.sku_barcode,
-          product_name: prod.product_name,
-          transaction_type: 'SALE',
-          quantity_delta: -line.quantity,
-          balance_after: prod.stock_quantity,
-          unit_cost: prod.cost_price || (prod.unit_price * 0.65),
-          reference_invoice: newInvoice.invoice_no,
-          operator_name: req.user?.full_name || req.user?.name || 'Cashier',
-          batch_number: prod.batch_lot_number || 'BATCH-STD'
-        });
-      } catch (txErr) {
-        console.error('InventoryTransaction record error:', txErr.message);
-      }
+        // Record inventory transaction
+        try {
+          await InventoryTransaction.create({
+            product_id: prod._id,
+            sku_barcode: prod.sku_barcode || line.sku_barcode,
+            product_name: prod.product_name || line.product_name,
+            transaction_type: 'SALE',
+            quantity_delta: -line.quantity,
+            balance_after: prod.stock_quantity,
+            unit_cost: prod.cost_price || (prod.unit_price * 0.65),
+            reference_invoice: newInvoice.invoice_no,
+            operator_name: req.user?.full_name || req.user?.name || 'Cashier',
+            batch_number: prod.batch_lot_number || 'BATCH-STD'
+          });
+        } catch (txErr) {
+          console.error('InventoryTransaction record error:', txErr.message);
+        }
 
-      // Real-time low-stock threshold alert broadcast
-      if (prod.stock_quantity <= prod.reorder_level) {
-        emitStockLowAlert(prod);
+        // Real-time low-stock threshold alert broadcast
+        if (prod.stock_quantity <= (prod.reorder_level || 15)) {
+          emitStockLowAlert(prod);
+        }
       }
     }
 
     // Double-Entry Ledger Posting
     try {
-      const lastLedger = await LedgerEntry.findOne().sort({ entry_date: -1 });
+      const lastLedger = await LedgerEntry.findOne().sort({ date: -1, _id: -1 });
       let runningBalance = (lastLedger?.running_balance || 500000);
 
       // Debit Cash / Bank or Accounts Receivable
@@ -390,16 +365,31 @@ exports.createInvoice = async (req, res) => {
     // 7. Trigger Asynchronous Credit Risk Anomaly Evaluation if registered buyer
     if (customerDoc) {
       try {
+        let riskData = null;
         const unpaidRatio = customerDoc.credit_limit > 0 ? (customerDoc.current_balance / customerDoc.credit_limit) : 0.0;
-        const aiRes = await axios.post(`${AI_SERVICE_URL}/api/ai/risk/score`, {
-          transaction_frequency: customerDoc.transaction_frequency || 10,
-          average_ticket_size: customerDoc.avg_ticket_size || netTotal,
-          overdue_days: customerDoc.overdue_days || 0,
-          unpaid_balance_ratio: Number(unpaidRatio.toFixed(2))
-        });
+        try {
+          const aiRes = await axios.post(`${AI_SERVICE_URL}/api/ai/risk/score`, {
+            transaction_frequency: customerDoc.transaction_frequency || 10,
+            average_ticket_size: customerDoc.avg_ticket_size || netTotal,
+            overdue_days: customerDoc.overdue_days || 0,
+            unpaid_balance_ratio: Number(unpaidRatio.toFixed(2))
+          }, { timeout: 1000 });
 
-        if (aiRes.data && aiRes.data.status === 'success') {
-          const riskData = aiRes.data;
+          if (aiRes.data && (aiRes.data.status === 'success' || aiRes.data.risk_score !== undefined)) {
+            riskData = aiRes.data;
+          }
+        } catch (callErr) {
+          // Graceful fallback to native AI engine on Render free tier
+          const nativeAi = require('../services/nativeAiEngine');
+          riskData = nativeAi.scoreCreditRisk({
+            transaction_frequency: customerDoc.transaction_frequency || 10,
+            average_ticket_size: customerDoc.avg_ticket_size || netTotal,
+            overdue_days: customerDoc.overdue_days || 0,
+            unpaid_balance_ratio: Number(unpaidRatio.toFixed(2))
+          });
+        }
+
+        if (riskData) {
           customerDoc.risk_score = riskData.risk_score;
           if (riskData.is_anomaly || riskData.flag_level === 'HIGH_RISK') {
             customerDoc.risk_status = 'FLAGGED';
@@ -410,11 +400,12 @@ exports.createInvoice = async (req, res) => {
               customer_name: customerDoc.full_name,
               invoice_id: newInvoice._id,
               invoice_no: newInvoice.invoice_no,
-              anomaly_score: riskData.decision_function_score,
+              anomaly_score: riskData.decision_function_score !== undefined ? riskData.decision_function_score : (riskData.anomaly_score || 0.65),
               risk_score: riskData.risk_score,
               risk_level: riskData.flag_level,
               is_anomaly: riskData.is_anomaly,
-              decision_action: riskData.recommended_action
+              decision_action: riskData.recommended_action,
+              status: 'ACTIVE'
             });
             await auditLog.save();
 
@@ -636,7 +627,7 @@ exports.cancelInvoice = async (req, res) => {
 
     // Reversing Ledger Entry
     try {
-      const lastLedger = await LedgerEntry.findOne().sort({ entry_date: -1 });
+      const lastLedger = await LedgerEntry.findOne().sort({ date: -1, _id: -1 });
       const runningBalance = (lastLedger?.running_balance || 500000) - invoice.net_total;
 
       await LedgerEntry.create({

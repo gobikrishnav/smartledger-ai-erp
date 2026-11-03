@@ -67,6 +67,7 @@ exports.getLedgerEntries = async (req, res) => {
         total: totalCount,
         page: Number(page),
         limit: Number(limit),
+        totalPages: Math.ceil(totalCount / Number(limit)) || 1,
         summary: {
           totalDebit: Number(totalDebit.toFixed(2)),
           totalCredit: Number(totalCredit.toFixed(2)),
