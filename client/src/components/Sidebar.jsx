@@ -4,7 +4,7 @@ import {
   FiGrid, FiTrendingUp, FiFileText, FiShoppingBag,
   FiPieChart, FiUsers, FiTruck, FiBox, FiShield,
   FiSettings, FiChevronRight, FiChevronDown, FiBookOpen,
-  FiCpu, FiBarChart2, FiAlertCircle
+  FiCpu, FiBarChart2, FiAlertCircle, FiPercent
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,6 +26,7 @@ const Sidebar = () => {
   const cashierNav = [
     { path: '/pos', label: 'POS Terminal', icon: FiShoppingBag },
     { path: '/invoices', label: 'Invoices', icon: FiFileText },
+    { path: '/tax', label: 'Tax & GST Hub', icon: FiPercent },
   ];
 
   const warehouseNav = [
@@ -42,6 +43,7 @@ const Sidebar = () => {
   const erpCoreNav = [
     { path: '/dashboard', label: 'Executive Dashboard', icon: FiGrid },
     { path: '/invoices', label: 'Invoice Ledger', icon: FiFileText },
+    { path: '/tax', label: 'Tax & GST Hub', icon: FiPercent, badge: 'GST' },
     { path: '/ledger', label: 'General Ledger', icon: FiBookOpen },
     { path: '/clients', label: 'B2B Customers & Risk', icon: FiUsers },
     { path: '/inventory', label: 'Inventory & Stock', icon: FiBox },

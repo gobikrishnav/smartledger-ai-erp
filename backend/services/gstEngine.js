@@ -11,6 +11,7 @@ const HSN_RATE_MAP = {
   '19': 18,  // Packaged Foods
   '27': 18,  // Mineral Fuels & Oils
   '30': 12,  // Pharmaceutical Products
+  '36': 18,  // Fireworks, Pyrotechnics & Combustibles (Sivakasi Master Category)
   '39': 18,  // Plastics & Articles
   '52': 5,   // Cotton & Textiles
   '61': 12,  // Apparels & Clothing
@@ -87,8 +88,22 @@ function computeGSTLineItem({
   };
 }
 
+const HSN_DIRECTORY = [
+  { code: '3604', chapter: '36', rate: 18, name: 'Fireworks & Pyrotechnic Articles', description: 'Sparklers, flowerpots, rockets, ground chakkars, aerial shells, and sound crackers' },
+  { code: '8471', chapter: '84', rate: 18, name: 'Automatic Data Processing Machines', description: 'Point of sale terminals, computer systems, and microcomputers' },
+  { code: '8501', chapter: '85', rate: 18, name: 'Electrical Motors & Generators', description: 'Industrial automation units and electrical machinery' },
+  { code: '3923', chapter: '39', rate: 18, name: 'Plastic Packaging Articles', description: 'Boxes, cases, crates, and packaging materials' },
+  { code: '4819', chapter: '48', rate: 12, name: 'Cartons, Boxes & Paper Packaging', description: 'Corrugated cartons and cardboard packaging containers' },
+  { code: '1006', chapter: '10', rate: 5, name: 'Cereals & Grains', description: 'Processed rice, flour, and agricultural grains' },
+  { code: '0402', chapter: '04', rate: 5, name: 'Dairy & Milk Products', description: 'Milk powder, packaged butter, and condensed dairy products' },
+  { code: '3004', chapter: '30', rate: 12, name: 'Medicaments & Formulations', description: 'Pharmaceutical drugs and medical formulations' },
+  { code: '8708', chapter: '87', rate: 28, name: 'Motor Vehicle Parts & Accessories', description: 'Automotive spares and mechanical transport parts' },
+  { code: '9983', chapter: '99', rate: 18, name: 'Professional & Technical Services', description: 'IT consulting, ERP platform maintenance, and logistics support' }
+];
+
 module.exports = {
   HSN_RATE_MAP,
+  HSN_DIRECTORY,
   computeGSTLineItem,
   calculateLineGst: (amount, rate, originState, destState) => {
     return computeGSTLineItem({

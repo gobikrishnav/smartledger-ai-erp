@@ -323,6 +323,7 @@ async function seedSivakasiData(force = false) {
 
           let subtotal = 0;
           const lineItems = [];
+          const isInterState = customer.gstin ? !customer.gstin.startsWith('33') : (customer.address && !customer.address.includes('Tamil Nadu'));
 
           for (const [sku, baseQty] of rawItems) {
             const p = getProd(sku);
@@ -332,10 +333,27 @@ async function seedSivakasiData(force = false) {
             const costPrice = p.cost_price || (unitPrice * 0.65);
             const taxable = Number((qty * unitPrice).toFixed(2));
             const gst = Number((taxable * 0.18).toFixed(2));
-            const cgst = Number((gst / 2).toFixed(2));
-            const sgst = Number((gst / 2).toFixed(2));
+            const cgst = isInterState ? 0 : Number((gst / 2).toFixed(2));
+            const sgst = isInterState ? 0 : Number((gst / 2).toFixed(2));
+            const igst = isInterState ? gst : 0;
             subtotal += taxable;
-            lineItems.push({ product_id: p._id, sku_barcode: p.sku_barcode, product_name: p.product_name, quantity: qty, unit_price: unitPrice, cost_price: costPrice, case_content: p.case_content || 36, brand: p.brand || 'Karpagam', no_of_cases: Math.max(1, Math.round(qty / (p.case_content || 36))), taxable_amount: taxable, gst_rate: 18, cgst, sgst, igst: 0, line_total: Number((taxable + gst).toFixed(2)) });
+            lineItems.push({
+              product_id: p._id,
+              sku_barcode: p.sku_barcode,
+              product_name: p.product_name,
+              quantity: qty,
+              unit_price: unitPrice,
+              cost_price: costPrice,
+              case_content: p.case_content || 36,
+              brand: p.brand || 'Karpagam',
+              no_of_cases: Math.max(1, Math.round(qty / (p.case_content || 36))),
+              taxable_amount: taxable,
+              gst_rate: 18,
+              cgst,
+              sgst,
+              igst,
+              line_total: Number((taxable + gst).toFixed(2))
+            });
           }
 
           if (!lineItems.length) continue;
@@ -370,9 +388,9 @@ async function seedSivakasiData(force = false) {
             terminal_geo_token: { lat: 9.4533, lng: 77.7946, accuracy: 5.0, verified: true },
             subtotal,
             total_tax: totalTax,
-            cgst_total: Number((totalTax / 2).toFixed(2)),
-            sgst_total: Number((totalTax / 2).toFixed(2)),
-            igst_total: 0,
+            cgst_total: isInterState ? 0 : Number((totalTax / 2).toFixed(2)),
+            sgst_total: isInterState ? 0 : Number((totalTax / 2).toFixed(2)),
+            igst_total: isInterState ? totalTax : 0,
             discount_amount: discAmt,
             other_charges: otherChg,
             packaging_charges: packChg,

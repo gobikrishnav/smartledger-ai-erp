@@ -22,6 +22,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const insightRoutes = require('./routes/insightRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const businessRoutes = require('./routes/businessRoutes');
+const taxRoutes = require('./routes/taxRoutes');
 
 const app = express();
 
@@ -48,6 +49,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/insights', insightRoutes);
 app.use('/api/audit', auditRoutes);
 app.use('/api/business', businessRoutes);
+app.use('/api/tax', taxRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {

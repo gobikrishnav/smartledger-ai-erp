@@ -23,6 +23,7 @@ import InvoiceCreate from './pages/InvoiceCreate';
 import Clients from './pages/Clients';
 import Inventory from './pages/Inventory';
 import Ledger from './pages/Ledger';
+import TaxManagement from './pages/TaxManagement';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Suppliers from './pages/Suppliers';
@@ -76,6 +77,7 @@ const App = () => {
             {/* Core Financial & Operational Modules */}
             <Route path="/invoices" element={<ProtectedRoute allowedRoles={['Admin', 'Business Owner', 'Corporate Auditor', 'BUSINESS_OWNER', 'ADMIN']}><Invoices /></ProtectedRoute>} />
             <Route path="/invoices/new" element={<ProtectedRoute allowedRoles={['Admin', 'Business Owner', 'BUSINESS_OWNER', 'ADMIN']}><InvoiceCreate /></ProtectedRoute>} />
+            <Route path="/tax" element={<ProtectedRoute allowedRoles={['Admin', 'Business Owner', 'Corporate Auditor', 'BUSINESS_OWNER', 'ADMIN', 'Cashier', 'CASHIER']}><TaxManagement /></ProtectedRoute>} />
             <Route path="/ledger" element={<ProtectedRoute allowedRoles={['Admin', 'Business Owner', 'BUSINESS_OWNER', 'ADMIN']}><Ledger /></ProtectedRoute>} />
             <Route path="/clients" element={<ProtectedRoute allowedRoles={['Admin', 'Business Owner', 'BUSINESS_OWNER', 'ADMIN']}><Clients /></ProtectedRoute>} />
             <Route path="/inventory" element={<ProtectedRoute allowedRoles={['Admin', 'Warehouse Manager', 'WAREHOUSE_MGR', 'BUSINESS_OWNER', 'ADMIN']}><Inventory /></ProtectedRoute>} />
