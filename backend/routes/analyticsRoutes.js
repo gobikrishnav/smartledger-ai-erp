@@ -54,8 +54,8 @@ router.get('/cashflow', async (req, res) => {
   }
 });
 
-// GET /api/analytics/market-basket (Apriori Association Rules)
-router.get('/market-basket', async (req, res) => {
+// GET /api/analytics/market-basket & /api/analytics/apriori (Apriori Association Rules)
+const getMarketBasketRules = async (req, res) => {
   try {
     const InvoiceItem = require('../models/InvoiceItem');
     const items = await InvoiceItem.find();
@@ -124,6 +124,21 @@ router.get('/market-basket', async (req, res) => {
     rules.sort((a, b) => (b.lift || 0) - (a.lift || 0));
 
     res.json(rules.slice(0, 20));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Mount both /market-basket and /apriori aliases
+router.get('/market-basket', getMarketBasketRules);
+router.get('/apriori', getMarketBasketRules);
+
+// GET /api/analytics/discounts (PED Price Elasticity & Discount Analysis)
+router.get('/discounts', async (req, res) => {
+  try {
+    const nativeAi = require('../services/nativeAiEngine');
+    const result = await nativeAi.analyzeDiscountOptimization();
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
